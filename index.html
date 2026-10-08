@@ -1,0 +1,1984 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vegas AI</title>
+<meta name="description" content="Vegas AI Chat Interface" />
+<meta property="og:title" content="Vegas AI" />
+<meta property="og:description" content="Vegas AI Chat Interface" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#161616" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="VegasAI" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<style>
+  :root {
+    --bg: #FAFAFA;
+    --surface: #F0F0F0;
+    --line: #E0E0E0;
+    --ink: #161616;
+    --muted: #6E6E6E;
+    --user: #E8E8E8;
+    --on-ink: #FAFAFA;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121212;
+      --surface: #1B1B1B;
+      --line: #2C2C2C;
+      --ink: #EDEDED;
+      --muted: #8F8F8F;
+      --user: #262626;
+      --on-ink: #121212;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121212;
+    --surface: #1B1B1B;
+    --line: #2C2C2C;
+    --ink: #EDEDED;
+    --muted: #8F8F8F;
+    --user: #262626;
+    --on-ink: #121212;
+  }
+
+  * { box-sizing: border-box; font-family: var(--font); }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  button, textarea, input, select { font-family: var(--font); font-size: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px; }
+  button:disabled { opacity: .35; cursor: default; }
+  [hidden] { display: none !important; }
+
+  .app { display: flex; height: 100%; height: 100dvh; }
+
+  /* Drawer (opened by the three-line button) */
+  .sidebar {
+    position: fixed; inset: 0 auto 0 0; z-index: 20;
+    width: 280px; max-width: 86vw;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    padding: 16px 12px;
+    padding-top: calc(16px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    gap: 10px;
+    transform: translateX(-100%);
+    transition: transform .2s ease;
+    font-family: var(--font);
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 0 0 40px rgba(0,0,0,.18); }
+  .scrim { display: none; }
+  .scrim.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.25); z-index: 15; }
+
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+  .drawer-head .title { font-weight: 600; font-family: var(--font); }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: grid; place-items: center; color: var(--muted);
+  }
+  .icon-btn:hover { color: var(--ink); background: var(--line); }
+
+  .features { display: flex; flex-direction: column; gap: 2px; }
+  .feat {
+    display: flex; align-items: center; gap: 10px;
+    text-align: left; padding: 9px 10px; border-radius: 8px;
+    font-size: 15px; font-family: var(--font);
+  }
+  .feat:hover:not(:disabled) { background: var(--line); }
+  .feat svg { flex-shrink: 0; color: var(--muted); }
+
+  .side-label { font-size: 13px; color: var(--muted); padding: 6px 10px 0; font-family: var(--font); }
+  .history { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+  .history li { display: flex; align-items: center; border-radius: 8px; }
+  .history li:hover, .history li.active { background: var(--line); }
+  .history .chat-open {
+    flex: 1; text-align: left; padding: 8px 10px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-family: var(--font);
+  }
+  .history .chat-del { color: var(--muted); padding: 6px 6px; font-size: 12px; opacity: 0; font-family: var(--font); }
+  .history li:hover .chat-del, .history li.active .chat-del, .history .chat-del:focus-visible { opacity: 1; }
+  .empty-history { color: var(--muted); font-size: 14px; padding: 8px 10px; font-family: var(--font); }
+
+  .profile-row {
+    display: flex; align-items: center; gap: 10px;
+    border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
+    border: 1px solid var(--line);
+    display: grid; place-items: center; background: var(--bg);
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .profile-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; font-family: var(--font); }
+  .settings-btn {
+    padding: 7px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 14px; background: var(--bg); font-family: var(--font);
+  }
+  .settings-btn:hover { background: var(--line); }
+
+  /* Settings panel */
+  .modal-wrap { display: none; position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.35); align-items: center; justify-content: center; padding: 16px; }
+  .modal-wrap.show { display: flex; }
+  .modal {
+    width: 100%; max-width: 420px; max-height: 90dvh; overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 16px;
+    padding: 20px; display: flex; flex-direction: column; gap: 18px; font-family: var(--font);
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; }
+  .modal-head h2 { font-size: 18px; font-weight: 600; margin: 0; font-family: var(--font); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label, .field .lbl { font-size: 14px; color: var(--muted); font-family: var(--font); }
+  .field input[type="text"], .field select {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 12px; width: 100%; font-family: var(--font); font-size: 14px;
+  }
+  .row-inline { display: flex; align-items: center; gap: 12px; }
+  .photo-btn, .danger-btn {
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; background: var(--surface); font-family: var(--font);
+  }
+  .danger-btn { color: var(--ink); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { padding: 7px; border-radius: 7px; font-size: 14px; color: var(--muted); font-family: var(--font); }
+  .seg button[aria-pressed="true"] { background: var(--bg); color: var(--ink); font-weight: 500; box-shadow: 0 0 0 1px var(--line); }
+
+  /* Main */
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+  .topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+  .brand { font-weight: 600; margin-right: auto; font-family: var(--font); }
+  .undo-group { display: flex; gap: 4px; }
+  .undo-group button { padding: 6px 10px; border-radius: 8px; font-size: 14px; color: var(--muted); font-family: var(--font); }
+  .undo-group button:hover:not(:disabled) { color: var(--ink); background: var(--surface); }
+
+  .home { flex: 1; display: grid; place-items: center; padding: 24px; }
+  .home h1 {
+    font-size: clamp(28px, 4vw, 40px); font-weight: 500;
+    margin: 0; text-align: center; line-height: 1.3; font-family: var(--font);
+  }
+
+  .thread { flex: 1; overflow-y: auto; padding: 16px 16px 24px; }
+  .thread-inner { max-width: 740px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .msg { display: flex; flex-direction: column; gap: 4px; }
+  .msg.user { align-items: flex-end; }
+  .msg.assistant { align-items: flex-start; }
+
+  .bubble {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+    font-size: 15px;
+    direction: ltr;
+    text-align: left;
+    font-family: var(--font);
+  }
+  .bubble[dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+  }
+  .msg.user .bubble {
+    background: var(--user);
+    padding: 8px 14px;
+    border-radius: 18px;
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 80%;
+  }
+  .msg.assistant .bubble {
+    padding: 2px 0;
+    max-width: 100%;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Action Buttons (Icon-only) */
+  .msg-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .msg.user .msg-actions {
+    justify-content: flex-end;
+  }
+  .msg.assistant .msg-actions {
+    justify-content: flex-start;
+  }
+
+  .msg-action-btn {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s, background-color 0.15s;
+    position: relative;
+    padding: 0;
+  }
+  .msg-action-btn:hover {
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .msg-action-btn.active {
+    color: var(--ink);
+    background: var(--surface);
+  }
+  .msg-action-btn svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+    stroke: currentColor;
+  }
+
+  .bubble pre {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; overflow-x: auto; margin: 8px 0; font-size: 13.5px; line-height: 1.5; white-space: pre;
+    direction: ltr !important; text-align: left !important; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  }
+  .bubble pre .code-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .bubble pre .code-lang { font-size: 12px; color: var(--muted); text-transform: uppercase; font-family: var(--font); font-weight: 500; }
+  .bubble pre .code-btns { display: flex; gap: 6px; }
+  .code-copy { font-size: 12px; color: var(--muted); padding: 3px 8px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); font-family: var(--font); cursor: pointer; }
+  .code-copy:hover { color: var(--ink); border-color: var(--ink); }
+
+  .media-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; margin: 2px 4px 2px 0; font-family: var(--font); }
+  .media-thumb { display: block; max-width: 220px; max-height: 180px; border-radius: 12px; margin-bottom: 6px; object-fit: cover; }
+  .typing { color: var(--muted); font-size: 14px; font-family: var(--font); }
+
+  /* Composer */
+  .composer { padding: 8px 16px 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .composer-inner { max-width: 740px; margin: 0 auto; }
+  .pill {
+    display: flex; align-items: flex-end; gap: 6px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 8px;
+  }
+  .pill textarea {
+    flex: 1; resize: none; border: 0; background: transparent;
+    padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 1.8; font-size: 15px; font-family: var(--font);
+  }
+  .pill textarea:focus { outline: none; }
+  .pill textarea::placeholder { color: var(--muted); }
+  .round-btn {
+    width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+    display: grid; place-items: center; color: var(--muted);
+  }
+  .round-btn:hover:not(:disabled) { color: var(--ink); background: var(--line); }
+  .round-btn.on { color: #fff; background: #e11d48; animation: micPulse 1.4s infinite ease-in-out; }
+  @keyframes micPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45); }
+    50% { box-shadow: 0 0 0 8px rgba(225, 29, 72, 0); }
+  }
+  .send-btn { background: var(--ink); color: var(--on-ink); }
+  .send-btn:hover:not(:disabled) { opacity: .85; background: var(--ink); color: var(--on-ink); }
+  .attachments { max-width: 740px; margin: 8px auto 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .attachments .media-chip button { color: var(--muted); padding: 0 2px; }
+
+  /* Plus (+) Attach Menu Popover (Camera, Files, Gallery) */
+  .attach-wrap { position: relative; display: flex; align-items: center; }
+  .attach-menu {
+    position: absolute; bottom: calc(100% + 10px); left: 0;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 14px;
+    padding: 6px; min-width: 165px; box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    display: none; flex-direction: column; gap: 2px; z-index: 40;
+  }
+  .attach-menu.open { display: flex; }
+  .attach-menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 12px; border-radius: 10px; font-size: 14px; color: var(--ink);
+    text-align: left; font-family: var(--font); transition: background 0.15s;
+  }
+  .attach-menu-item:hover { background: var(--surface); }
+  .attach-menu-item svg { width: 17px; height: 17px; color: var(--muted); flex-shrink: 0; }
+  .attach-menu-item span { flex: 1; }
+
+  @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar" aria-label="Menu">
+    <div class="drawer-head">
+      <span class="title">Vegas AI</span>
+      <button class="icon-btn" id="closeMenu" aria-label="Close menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="features">
+      <button type="button" class="feat" id="newChatBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New chat
+      </button>
+      <button type="button" class="feat" id="installPwaBtn" style="display:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Install App
+      </button>
+    </div>
+
+    <div class="side-label">History</div>
+    <div style="padding: 0 4px 4px;">
+      <input type="text" id="searchInput" placeholder="Search chats..." style="width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px;" />
+    </div>
+    <ul class="history" id="history"></ul>
+
+    <div class="profile-row">
+      <div class="avatar" id="avatar"></div>
+      <span class="profile-name" id="profileName"></span>
+      <button class="settings-btn" id="settingsBtn">Settings</button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main>
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <span class="brand">Vegas AI</span>
+      <div class="undo-group">
+        <button type="button" id="undoBtn" disabled>Undo</button>
+        <button type="button" id="redoBtn" disabled>Redo</button>
+      </div>
+    </header>
+
+    <section class="home" id="home">
+      <h1>How can I help you?</h1>
+    </section>
+
+    <section class="thread" id="thread" hidden>
+      <div class="thread-inner" id="messages"></div>
+    </section>
+
+    <form class="composer" id="composer">
+      <div class="composer-inner">
+        <div class="pill">
+          <div class="attach-wrap" id="attachWrap">
+            <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <div class="attach-menu" id="attachMenu" role="menu">
+              <button type="button" class="attach-menu-item" id="menuCameraBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Camera (کیمرہ)</span>
+              </button>
+              <button type="button" class="attach-menu-item" id="menuFilesBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>Files (فائلز)</span>
+              </button>
+              <button type="button" class="attach-menu-item" id="menuGalleryBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span>Gallery (گیلری)</span>
+              </button>
+            </div>
+          </div>
+          <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" hidden>
+          <input type="file" id="fileInput" accept="*/*" multiple hidden>
+          <input type="file" id="galleryInput" accept="image/*,video/*" multiple hidden>
+          <textarea id="input" rows="1" placeholder="Message Vegas AI" aria-label="Message"></textarea>
+          <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input (آواز سے لکھیں)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          </button>
+          <button type="submit" class="round-btn send-btn" id="sendBtn" aria-label="Send" title="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+          </button>
+        </div>
+        <div class="attachments" id="attachments"></div>
+      </div>
+    </form>
+  </main>
+
+  <!-- Settings panel -->
+  <div class="modal-wrap" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="settingsTitle">Settings</h2>
+        <button class="icon-btn" id="closeSettings" aria-label="Close settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Profile photo</span>
+        <div class="row-inline">
+          <div class="avatar" id="settingsAvatar"></div>
+          <button type="button" class="photo-btn" id="photoBtn">Change photo</button>
+          <input type="file" id="photoInput" accept="image/*" hidden>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="nameInput">Name</label>
+        <input type="text" id="nameInput" maxlength="40" placeholder="Your name">
+      </div>
+
+      <div class="field">
+        <label for="providerSelect">AI Provider (AI فراہم کنندہ)</label>
+        <select id="providerSelect">
+          <option value="auto">Auto Fallback (خودکار - Gemini + OpenAI)</option>
+          <option value="gemini">Google Gemini Primary</option>
+          <option value="openai">OpenAI Primary</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Appearance</span>
+        <div class="seg" role="group" aria-label="Theme">
+          <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Chats</span>
+        <div><button type="button" class="danger-btn" id="clearAll">Delete all chats</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = "vegas-ai-chats";
+  var THEME_KEY = "vegas-ai-theme";
+  var PROFILE_KEY = "vegas-ai-profile";
+  var PROVIDER_KEY = "vegas-ai-provider";
+
+  var API_CHAT_URL = "/api/chat";
+  var API_IMAGE_URL = "/api/image";
+  var API_TTS_URL = "/api/tts";
+  var API_TRANSCRIBE_URL = "/api/transcribe";
+
+  var state = { chats: [], currentId: null, profile: { name: "User", photo: "" }, providerPreference: "auto" };
+  var undoStack = [], redoStack = [];
+  var pending = [];
+  var busy = false;
+  var currentSpeakingIndex = null;
+  var currentAudio = null;
+  var sharedAudio = new Audio();
+  var clientTtsCache = {};
+
+  var $ = function (id) { return document.getElementById(id); };
+  var el = {
+    sidebar: $("sidebar"), scrim: $("scrim"), menuBtn: $("menuBtn"), closeMenu: $("closeMenu"),
+    newChatBtn: $("newChatBtn"), searchInput: $("searchInput"), history: $("history"),
+    home: $("home"), thread: $("thread"), messages: $("messages"),
+    composer: $("composer"), input: $("input"), sendBtn: $("sendBtn"),
+    attachWrap: $("attachWrap"), attachBtn: $("attachBtn"), attachMenu: $("attachMenu"),
+    menuCameraBtn: $("menuCameraBtn"), menuFilesBtn: $("menuFilesBtn"), menuGalleryBtn: $("menuGalleryBtn"),
+    cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
+    attachments: $("attachments"),
+    micBtn: $("micBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
+    avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
+    settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
+    settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
+    nameInput: $("nameInput"), providerSelect: $("providerSelect"), clearAll: $("clearAll"),
+    installPwaBtn: $("installPwaBtn")
+  };
+
+  /* ---------- Storage ---------- */
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) state.chats = JSON.parse(raw) || [];
+    } catch (e) { state.chats = []; }
+    try {
+      var p = localStorage.getItem(PROFILE_KEY);
+      if (p) state.profile = Object.assign({ name: "User", photo: "" }, JSON.parse(p));
+    } catch (e) {}
+    try {
+      var prov = localStorage.getItem(PROVIDER_KEY);
+      if (prov) state.providerPreference = prov;
+    } catch (e) {}
+  }
+
+  function saveChats() {
+    try {
+      var clean = state.chats.map(function (c) {
+        return {
+          id: c.id, title: c.title, pinned: !!c.pinned,
+          messages: (c.messages || []).map(function (m) {
+            return {
+              role: m.role,
+              text: m.text,
+              failed: !!m.failed,
+              media: (m.media || []).map(function (x) {
+                return { type: x.type, name: x.name, url: x.url, mimeType: x.mimeType, data: x.data };
+              })
+            };
+          })
+        };
+      });
+      localStorage.setItem(KEY, JSON.stringify(clean));
+    } catch (e) {}
+  }
+
+  function saveProfile() {
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile)); } catch (e) {}
+  }
+  function saveProvider() {
+    try { localStorage.setItem(PROVIDER_KEY, state.providerPreference); } catch (e) {}
+  }
+
+  /* ---------- PWA Installation ---------- */
+  var deferredPrompt;
+  if (el.installPwaBtn) {
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      el.installPwaBtn.style.display = 'flex';
+    });
+    el.installPwaBtn.addEventListener('click', function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice) {
+          if (choice.outcome === 'accepted') {
+            el.installPwaBtn.style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      }
+    });
+    window.addEventListener('appinstalled', function() {
+      el.installPwaBtn.style.display = 'none';
+    });
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        el.installPwaBtn.style.display = 'none';
+    }
+  }
+
+  /* ---------- Theme ---------- */
+  function applyTheme(mode) {
+    if (mode === "light" || mode === "dark") document.documentElement.setAttribute("data-theme", mode);
+    else document.documentElement.removeAttribute("data-theme");
+    try { localStorage.setItem(THEME_KEY, mode || "system"); } catch (e) {}
+    var resolved = mode || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-set") === resolved));
+    });
+  }
+
+  /* ---------- Helpers ---------- */
+  function uid() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function current() { return state.chats.find(function (c) { return c.id === state.currentId; }) || null; }
+
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  /* Detect Arabic script (Urdu / Arabic / Farsi) */
+  function hasUrdu(text) {
+    return /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text || "");
+  }
+
+  function copyText(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    } catch (e) {}
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+    return Promise.resolve();
+  }
+
+  function flashCopyIcon(btn) {
+    var checkSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    var origSvg = btn.innerHTML;
+    var origTitle = btn.getAttribute("title");
+    btn.innerHTML = checkSvg;
+    btn.setAttribute("title", "کاپی ہو گیا / Copied");
+    btn.style.color = "var(--ink)";
+    setTimeout(function () {
+      btn.innerHTML = origSvg;
+      btn.setAttribute("title", origTitle);
+      btn.style.color = "";
+    }, 1200);
+  }
+
+  function downloadText(filename, text, mime) {
+    try {
+      var blob = new Blob([text], { type: mime || "text/plain" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    } catch (e) {}
+  }
+
+  function extractCode(text) {
+    var m = String(text).match(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/);
+    if (!m) return null;
+    return { lang: (m[1] || "").toLowerCase(), code: m[2].replace(/\n$/, "") };
+  }
+
+  function updateSpeakerBtn(btn, isPlaying) {
+    if (!btn) return;
+    btn.innerHTML = isPlaying ? icons.speakerStop : icons.speaker;
+    btn.setAttribute("title", isPlaying ? "روکیں / Stop" : "سنیں / Listen");
+    if (isPlaying) btn.classList.add("active");
+    else btn.classList.remove("active");
+  }
+
+  function stopSpeaking() {
+    if (currentAudio) {
+      try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
+      currentAudio = null;
+    }
+    if (sharedAudio) {
+      try { sharedAudio.pause(); sharedAudio.currentTime = 0; } catch (e) {}
+    }
+    if ("speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    if (currentSpeakingIndex !== null) {
+      var allSpeakerBtns = document.querySelectorAll('[data-action="listen-msg"]');
+      Array.prototype.forEach.call(allSpeakerBtns, function (b) { updateSpeakerBtn(b, false); });
+      currentSpeakingIndex = null;
+    }
+  }
+
+  // Preload browser speechSynthesis voices asynchronously
+  var availableVoices = [];
+  function loadBrowserVoices() {
+    if ("speechSynthesis" in window) {
+      try { availableVoices = window.speechSynthesis.getVoices() || []; } catch (e) {}
+    }
+  }
+  loadBrowserVoices();
+  if ("speechSynthesis" in window && typeof window.speechSynthesis.onvoiceschanged !== "undefined") {
+    window.speechSynthesis.onvoiceschanged = loadBrowserVoices;
+  }
+
+  function cleanTextForSpeech(text) {
+    return String(text || "")
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/`[^`]*`/g, " ")
+      .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+      .replace(/[#*_~>|]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Pre-fetch TTS audio in background as soon as AI response finishes so clicking Listen is 0ms instant
+  function prefetchTts(text) {
+    var cleanText = cleanTextForSpeech(text);
+    if (!cleanText || clientTtsCache[cleanText]) return;
+    fetch(API_TTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: cleanText })
+    }).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (d) {
+      if (d && d.audio) clientTtsCache[cleanText] = d.audio;
+    }).catch(function () {});
+  }
+
+  function fallbackSpeechSynth(text, index, btn) {
+    if (!("speechSynthesis" in window)) {
+      if (btn) updateSpeakerBtn(btn, false);
+      currentSpeakingIndex = null;
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      var isU = hasUrdu(text);
+      var voices = availableVoices.length ? availableVoices : (window.speechSynthesis.getVoices() || []);
+
+      var chosenVoice = null;
+      if (isU) {
+        chosenVoice = voices.find(function (v) {
+          var l = (v.lang || "").toLowerCase();
+          return l.indexOf("ur") !== -1 || l.indexOf("hi") !== -1;
+        });
+      }
+      if (!chosenVoice) {
+        chosenVoice = voices.find(function (v) {
+          var name = (v.name || "").toLowerCase();
+          return (name.indexOf("female") !== -1 || name.indexOf("zira") !== -1 ||
+                  name.indexOf("aria") !== -1 || name.indexOf("samantha") !== -1 ||
+                  name.indexOf("karen") !== -1 || name.indexOf("victoria") !== -1 ||
+                  name.indexOf("google") !== -1 || name.indexOf("natural") !== -1);
+        });
+      }
+      if (chosenVoice) {
+        u.voice = chosenVoice;
+        u.lang = chosenVoice.lang;
+      } else {
+        u.lang = isU ? "ur-PK" : (navigator.language || "en-US");
+      }
+      u.pitch = 1.08;
+      u.rate = 1.0;
+
+      u.onend = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+      u.onerror = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      if (btn) updateSpeakerBtn(btn, false);
+      currentSpeakingIndex = null;
+    }
+  }
+
+  async function speak(text, index, btn) {
+    if (!text) return;
+
+    if (currentSpeakingIndex === index) {
+      stopSpeaking();
+      return;
+    }
+
+    stopSpeaking();
+    currentSpeakingIndex = index;
+    if (btn) updateSpeakerBtn(btn, true);
+
+    var cleanText = cleanTextForSpeech(text);
+    if (!cleanText) {
+      stopSpeaking();
+      return;
+    }
+
+    // Play immediately if already in client cache
+    if (clientTtsCache[cleanText]) {
+      try {
+        sharedAudio.src = clientTtsCache[cleanText];
+        currentAudio = sharedAudio;
+        sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+        sharedAudio.onerror = function () { fallbackSpeechSynth(cleanText, index, btn); };
+        await sharedAudio.play();
+        return;
+      } catch (e) {}
+    }
+
+    // Synchronously unlock sharedAudio on user click gesture so async play is never blocked by browser autoplay policy
+    try {
+      sharedAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+      var unlockPromise = sharedAudio.play();
+      if (unlockPromise && typeof unlockPromise.catch === "function") unlockPromise.catch(function () {});
+    } catch (e) {}
+
+    // Fetch natural female voice from /api/tts (~250ms)
+    try {
+      var res = await fetch(API_TTS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanText })
+      });
+      if (currentSpeakingIndex !== index) return; // User stopped while fetching
+      if (res.ok) {
+        var data = await res.json();
+        if (data.audio && currentSpeakingIndex === index) {
+          clientTtsCache[cleanText] = data.audio;
+          sharedAudio.src = data.audio;
+          currentAudio = sharedAudio;
+          sharedAudio.onended = function () {
+            if (currentSpeakingIndex === index) stopSpeaking();
+          };
+          sharedAudio.onerror = function () {
+            fallbackSpeechSynth(cleanText, index, btn);
+          };
+          await sharedAudio.play();
+          return;
+        }
+      }
+    } catch (err) {}
+
+    if (currentSpeakingIndex === index) {
+      fallbackSpeechSynth(cleanText, index, btn);
+    }
+  }
+
+  /* ---------- SVG Icons for Message Actions (NO TEXT) ---------- */
+  var icons = {
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+    speaker: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
+    speakerStop: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'
+  };
+
+  /* ---------- Markdown Parser with Language Support ---------- */
+  function inlineFormat(str) {
+    str = str.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+    str = str.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+    str = str.replace(/`([^`]+)`/g, '<code style="background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:2px 5px;font-size:13px;direction:ltr;display:inline-block;">$1</code>');
+    return str;
+  }
+
+  function renderBody(text, isUrdu) {
+    if (!text) return "";
+
+    var codeBlocks = [];
+    var textWithPlaceholders = String(text).replace(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/g, function (match, lang, code) {
+      var idx = codeBlocks.length;
+      codeBlocks.push({
+        lang: (lang || "").toLowerCase(),
+        code: code.replace(/\n$/, "")
+      });
+      return "___CODE_BLOCK_" + idx + "___";
+    });
+
+    var lines = textWithPlaceholders.split("\n");
+    var html = "";
+    var inList = null;
+    var inTable = false;
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      var codeMatch = line.match(/^___CODE_BLOCK_(\d+)___$/);
+      if (codeMatch) {
+        if (inList) { html += "</" + inList + ">"; inList = null; }
+        if (inTable) { html += "</tbody></table></div>"; inTable = false; }
+        var cb = codeBlocks[Number(codeMatch[1])];
+        html += '<pre><div class="code-head"><span class="code-lang">' + escapeHtml(cb.lang || 'code') + '</span><div class="code-btns"><button type="button" class="code-copy" data-action="copy-code">Copy</button><button type="button" class="code-copy" data-action="download-code" data-lang="' + escapeHtml(cb.lang || '') + '">Save file</button></div></div><code>' +
+                escapeHtml(cb.code) + '</code></pre>';
+        continue;
+      }
+
+      var isTableRow = /^\|.*\|$/.test(line.trim());
+      if (isTableRow) {
+        if (inList) { html += "</" + inList + ">"; inList = null; }
+        var cells = line.trim().split("|").slice(1, -1).map(function (c) { return c.trim(); });
+        var isDivider = cells.every(function (c) { return /^:?-+:?$/.test(c); });
+
+        if (isDivider) continue;
+
+        if (!inTable) {
+          inTable = true;
+          html += '<div style="overflow-x:auto;margin:8px 0;"><table style="width:100%;border-collapse:collapse;border:1px solid var(--line);font-size:14px;"><thead><tr style="background:var(--surface);">';
+          cells.forEach(function (c) {
+            html += '<th style="border:1px solid var(--line);padding:6px 10px;text-align:inherit;">' + inlineFormat(escapeHtml(c)) + '</th>';
+          });
+          html += '</tr></thead><tbody>';
+        } else {
+          html += '<tr>';
+          cells.forEach(function (c) {
+            html += '<td style="border:1px solid var(--line);padding:6px 10px;">' + inlineFormat(escapeHtml(c)) + '</td>';
+          });
+          html += '</tr>';
+        }
+        continue;
+      } else if (inTable) {
+        html += '</tbody></table></div>';
+        inTable = false;
+      }
+
+      var headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (headerMatch) {
+        if (inList) { html += "</" + inList + ">"; inList = null; }
+        var level = headerMatch[1].length;
+        html += '<h' + Math.min(level + 2, 6) + ' style="font-weight:600;margin:10px 0 4px 0;">' + inlineFormat(escapeHtml(headerMatch[2])) + '</h' + Math.min(level + 2, 6) + '>';
+        continue;
+      }
+
+      var ulMatch = line.match(/^[\*\-]\s+(.*)$/);
+      if (ulMatch) {
+        if (inList !== "ul") {
+          if (inList) html += "</" + inList + ">";
+          html += '<ul style="margin:6px 0;padding-inline-start:24px;list-style-type:disc;">';
+          inList = "ul";
+        }
+        html += '<li style="margin:2px 0;">' + inlineFormat(escapeHtml(ulMatch[1])) + '</li>';
+        continue;
+      }
+
+      var olMatch = line.match(/^\d+\.\s+(.*)$/);
+      if (olMatch) {
+        if (inList !== "ol") {
+          if (inList) html += "</" + inList + ">";
+          html += '<ol style="margin:6px 0;padding-inline-start:24px;list-style-type:decimal;">';
+          inList = "ol";
+        }
+        html += '<li style="margin:2px 0;">' + inlineFormat(escapeHtml(olMatch[1])) + '</li>';
+        continue;
+      }
+
+      if (inList) {
+        html += "</" + inList + ">";
+        inList = null;
+      }
+
+      var bqMatch = line.match(/^>\s?(.*)$/);
+      if (bqMatch) {
+        html += '<blockquote style="border-inline-start:3px solid var(--muted);margin:6px 0;padding-inline-start:10px;color:var(--muted);">' + inlineFormat(escapeHtml(bqMatch[1])) + '</blockquote>';
+        continue;
+      }
+
+      if (!line.trim()) {
+        html += '<br>';
+        continue;
+      }
+
+      var pStyle = isUrdu ? 'margin:2px 0; direction:rtl; text-align:right;' : 'margin:2px 0; direction:ltr; text-align:left;';
+      html += '<p style="' + pStyle + '">' + inlineFormat(escapeHtml(line)) + '</p>';
+    }
+
+    if (inList) html += "</" + inList + ">";
+    if (inTable) html += "</tbody></table></div>";
+
+    html = html.replace(/___CODE_BLOCK_(\d+)___/g, function (match, idx) {
+      var cb = codeBlocks[Number(idx)];
+      return '<pre><div class="code-head"><span class="code-lang">' + escapeHtml(cb.lang || 'code') + '</span><div class="code-btns"><button type="button" class="code-copy" data-action="copy-code">Copy</button><button type="button" class="code-copy" data-action="download-code" data-lang="' + escapeHtml(cb.lang || '') + '">Save file</button></div></div><code>' +
+              escapeHtml(cb.code) + '</code></pre>';
+    });
+
+    return html;
+  }
+
+  /* ---------- Message DOM Construction (Speed Optimized & Task 2/3 Compliant) ---------- */
+  function createMessageElement(m, idx) {
+    var isUrdu = hasUrdu(m.text);
+    var bubbleClass = "bubble";
+    var dirAttr = isUrdu ? 'dir="rtl"' : 'dir="ltr"';
+    var msgClass = "msg " + m.role;
+
+    var media = (m.media || []).map(function (x) {
+      if (x.url && x.type === "image") return '<img class="media-thumb" src="' + escapeHtml(x.url) + '" alt="' + escapeHtml(x.name) + '">';
+      if (x.url && x.type === "video") return '<video class="media-thumb" src="' + escapeHtml(x.url) + '" controls></video>';
+      return '<span class="media-chip">' + escapeHtml(x.name) + "</span>";
+    }).join("");
+
+    var actionsBlock = "";
+    if (m.role === "assistant") {
+      // Action icons (Copy, Listen, Download, Delete) ONLY under AI assistant responses
+      var isPlaying = currentSpeakingIndex === idx;
+      var speakerIcon = isPlaying ? icons.speakerStop : icons.speaker;
+      var speakerTitle = isPlaying ? "روکیں / Stop" : "سنیں / Listen";
+      var speakerClass = isPlaying ? "msg-action-btn active" : "msg-action-btn";
+
+      actionsBlock =
+        '<div class="msg-actions">' +
+        '<button type="button" class="msg-action-btn" data-action="copy-msg" title="کاپی / Copy" aria-label="Copy">' + icons.copy + '</button>' +
+        '<button type="button" class="' + speakerClass + '" data-action="listen-msg" title="' + speakerTitle + '" aria-label="Listen">' + speakerIcon + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="download-msg" title="ڈاؤن لوڈ / Download" aria-label="Download">' + icons.download + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="delete-msg" title="ڈیلیٹ / Delete" aria-label="Delete">' + icons.delete + '</button>' +
+        '</div>';
+    }
+
+    var div = document.createElement("div");
+    div.className = msgClass;
+    div.setAttribute("data-index", idx);
+    div.innerHTML =
+      '<div class="' + bubbleClass + '" ' + dirAttr + '>' + media + renderBody(m.text, isUrdu) + '</div>' +
+      actionsBlock;
+
+    return div;
+  }
+
+  /* ---------- Full Render (Only on Chat Switch / Initial Load) ---------- */
+  function render() {
+    var c = current();
+    var hasMessages = !!(c && c.messages && c.messages.length);
+    el.home.hidden = hasMessages;
+    el.thread.hidden = !hasMessages;
+
+    el.messages.innerHTML = "";
+    if (c && c.messages) {
+      c.messages.forEach(function (m, idx) {
+        el.messages.appendChild(createMessageElement(m, idx));
+      });
+    }
+
+    if (busy && (!c || !c.messages || !c.messages.length || c.messages[c.messages.length - 1].role !== "assistant" || !c.messages[c.messages.length - 1].text)) {
+      var typ = document.createElement("div");
+      typ.className = "typing";
+      typ.id = "activeTypingIndicator";
+      typ.textContent = "Vegas AI is typing…";
+      el.messages.appendChild(typ);
+    }
+
+    el.thread.scrollTop = el.thread.scrollHeight;
+
+    renderHistory();
+    renderAttachments();
+    updateUndoButtons();
+    renderProfile();
+  }
+
+  function renderHistory() {
+    if (!state.chats.length) {
+      el.history.innerHTML = '<li class="empty-history">No chats yet</li>';
+      return;
+    }
+
+    var query = (el.searchInput ? el.searchInput.value : "").trim().toLowerCase();
+
+    var filtered = state.chats.filter(function (c) {
+      if (!query) return true;
+      if ((c.title || "").toLowerCase().indexOf(query) !== -1) return true;
+      return (c.messages || []).some(function (m) {
+        return (m.text || "").toLowerCase().indexOf(query) !== -1;
+      });
+    });
+
+    if (!filtered.length) {
+      el.history.innerHTML = '<li class="empty-history">No matching chats</li>';
+      return;
+    }
+
+    var sorted = filtered.slice().reverse().sort(function (a, b) {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0;
+    });
+
+    el.history.innerHTML = sorted.map(function (c) {
+      var active = c.id === state.currentId ? " active" : "";
+      var isPinned = !!c.pinned;
+      var pinLabel = isPinned ? "Unpin" : "Pin";
+      var titleDisplay = (isPinned ? "📌 " : "") + escapeHtml(c.title);
+
+      return '<li class="' + active.trim() + '">' +
+             '<button type="button" class="chat-open" data-open="' + c.id + '" title="' + escapeHtml(c.title) + '">' + titleDisplay + "</button>" +
+             '<button type="button" class="chat-del" data-pin-chat="' + c.id + '" aria-label="' + pinLabel + '">' + pinLabel + '</button>' +
+             '<button type="button" class="chat-del" data-rename-chat="' + c.id + '" aria-label="Rename chat">Rename</button>' +
+             '<button type="button" class="chat-del" data-delete-chat="' + c.id + '" aria-label="Delete chat">Delete</button>' +
+             "</li>";
+    }).join("");
+  }
+
+  function renderAttachments() {
+    el.attachments.innerHTML = pending.map(function (p, i) {
+      return '<span class="media-chip">' + escapeHtml(p.name) +
+             ' <button type="button" data-remove-pending="' + i + '" aria-label="Remove">×</button></span>';
+    }).join("");
+  }
+
+  function updateUndoButtons() {
+    el.undoBtn.disabled = undoStack.length === 0;
+    el.redoBtn.disabled = redoStack.length === 0;
+  }
+
+  function avatarHtml(size) {
+    if (state.profile.photo) return '<img src="' + escapeHtml(state.profile.photo) + '" alt="">';
+    return '<svg width="' + (size || 20) + '" height="' + (size || 20) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>';
+  }
+
+  function renderProfile() {
+    el.avatar.innerHTML = avatarHtml(20);
+    el.settingsAvatar.innerHTML = avatarHtml(22);
+    el.profileName.textContent = state.profile.name || "User";
+  }
+
+  /* ---------- Undo / redo ---------- */
+  function snapshot() {
+    var c = current();
+    if (!c) return;
+    undoStack.push(JSON.stringify(c.messages));
+    if (undoStack.length > 100) undoStack.shift();
+    redoStack = [];
+  }
+  function undo() {
+    var c = current();
+    if (!c || !undoStack.length) return;
+    redoStack.push(JSON.stringify(c.messages));
+    c.messages = JSON.parse(undoStack.pop());
+    saveChats(); render();
+  }
+  function redo() {
+    var c = current();
+    if (!c || !redoStack.length) return;
+    undoStack.push(JSON.stringify(c.messages));
+    c.messages = JSON.parse(redoStack.pop());
+    saveChats(); render();
+  }
+
+  /* ---------- Chat actions ---------- */
+  function newChat() {
+    state.currentId = null;
+    undoStack = []; redoStack = []; pending = [];
+    el.input.value = ""; autosize();
+    closeMenu();
+    render();
+    el.input.focus();
+  }
+  function openChat(id) {
+    state.currentId = id;
+    undoStack = []; redoStack = [];
+    closeMenu();
+    render();
+  }
+  function deleteChat(id) {
+    state.chats = state.chats.filter(function (c) { return c.id !== id; });
+    if (state.currentId === id) { state.currentId = null; undoStack = []; redoStack = []; }
+    saveChats(); render();
+  }
+  function togglePinChat(id) {
+    var c = state.chats.find(function (item) { return item.id === id; });
+    if (!c) return;
+    c.pinned = !c.pinned;
+    saveChats();
+    renderHistory();
+  }
+  function renameChat(id) {
+    var c = state.chats.find(function (item) { return item.id === id; });
+    if (!c) return;
+    var newTitle = prompt("نیا عنوان درج کریں / Enter new title:", c.title);
+    if (newTitle !== null && newTitle.trim() !== "") {
+      c.title = newTitle.trim();
+      saveChats();
+      renderHistory();
+    }
+  }
+  function deleteMessage(index) {
+    var c = current();
+    if (!c || !c.messages) return;
+    snapshot();
+    c.messages.splice(index, 1);
+    saveChats(); render();
+  }
+
+  /* ---------- Dual AI Calls (Immediate, Fast, No Delay) ---------- */
+  function isImagePrompt(text) {
+    if (!text) return false;
+    var lower = text.toLowerCase().trim();
+    return /تصویر بنا|عکس بنا|تصویر کیجیے|تصویر بناؤ|تصویر بنائیں|generate image|create image|draw a|make an image|picture of|draw an image/i.test(lower);
+  }
+
+  async function triggerAiReplyForCurrentChat() {
+    var c = current();
+    if (!c || !c.messages || !c.messages.length) return;
+
+    var lastUserMsg = null;
+    for (var i = c.messages.length - 1; i >= 0; i--) {
+      if (c.messages[i].role === "user") {
+        lastUserMsg = c.messages[i];
+        break;
+      }
+    }
+    if (!lastUserMsg) return;
+
+    var text = lastUserMsg.text || "";
+    busy = true;
+
+    var oldTyp = $("activeTypingIndicator");
+    if (oldTyp) oldTyp.remove();
+
+    var typIndicator = document.createElement("div");
+    typIndicator.className = "typing";
+    typIndicator.id = "activeTypingIndicator";
+    typIndicator.textContent = "Vegas AI is typing…";
+    el.messages.appendChild(typIndicator);
+    el.thread.scrollTop = el.thread.scrollHeight;
+
+    var providerPref = state.providerPreference || "auto";
+
+    if (isImagePrompt(text)) {
+      try {
+        var res = await fetch(API_IMAGE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: text, providerPreference: providerPref })
+        });
+        var data = await res.json();
+        if (typIndicator.parentNode) typIndicator.remove();
+
+        if (data.imageUrl) {
+          var imgMsg = {
+            role: "assistant",
+            text: "یہ رہی آپ کی تصویر:" + (data.text ? "\n" + data.text : ""),
+            media: [{ type: "image", name: "generated_image.png", url: data.imageUrl }]
+          };
+          c.messages.push(imgMsg);
+          el.messages.appendChild(createMessageElement(imgMsg, c.messages.length - 1));
+        } else {
+          var errMsg = {
+            role: "assistant",
+            text: data.error || "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں یا رابطہ نہیں ہو سکا۔",
+            failed: true,
+            media: []
+          };
+          c.messages.push(errMsg);
+          el.messages.appendChild(createMessageElement(errMsg, c.messages.length - 1));
+        }
+      } catch (err) {
+        if (typIndicator.parentNode) typIndicator.remove();
+        var netErrMsg = {
+          role: "assistant",
+          text: "معذرت، تصویر بنانے میں رابطہ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+          failed: true,
+          media: []
+        };
+        c.messages.push(netErrMsg);
+        el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
+      }
+      busy = false; saveChats(); renderHistory();
+    } else {
+      var assistantMsg = { role: "assistant", text: "", media: [] };
+      c.messages.push(assistantMsg);
+      var assistantIdx = c.messages.length - 1;
+
+      var assistantElem = createMessageElement(assistantMsg, assistantIdx);
+      if (typIndicator.parentNode) typIndicator.remove();
+      el.messages.appendChild(assistantElem);
+      var bubbleElem = assistantElem.querySelector(".bubble");
+      bubbleElem.innerHTML = '<span style="color:var(--muted);font-size:14px;opacity:0.8;">…</span>';
+
+      try {
+        var allMsgs = c.messages.slice(0, -1);
+        var totalCount = allMsgs.length;
+        var apiMessages = allMsgs.map(function (m, idx) {
+          var includeMedia = idx >= totalCount - 2;
+          var combinedText = m.text || "";
+          if (includeMedia && m.media && Array.isArray(m.media)) {
+            m.media.forEach(function (med) {
+              if (med.textContent) {
+                combinedText += "\n\n[فائل: " + med.name + "]\n```\n" + med.textContent + "\n```";
+              }
+            });
+          }
+          return {
+            role: m.role,
+            text: combinedText,
+            media: includeMedia ? (m.media || []).filter(function (it) {
+              return it.data && it.mimeType && it.type !== "file";
+            }).map(function (item) {
+              return { data: item.data, mimeType: item.mimeType };
+            }) : []
+          };
+        });
+
+        var response = await fetch(API_CHAT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: apiMessages, providerPreference: providerPref })
+        });
+
+        if (!response.ok) {
+          assistantMsg.text = "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں یا رابطہ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔";
+          assistantMsg.failed = true;
+          bubbleElem.innerHTML = renderBody(assistantMsg.text, true);
+          busy = false; saveChats(); renderHistory();
+          return;
+        }
+
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder("utf-8");
+        var buffer = "";
+        var renderQueued = false;
+
+        function updateUi(force) {
+          if (force) {
+            renderQueued = false;
+            var isUrdu = hasUrdu(assistantMsg.text);
+            bubbleElem.setAttribute("dir", isUrdu ? "rtl" : "ltr");
+            bubbleElem.innerHTML = renderBody(assistantMsg.text, isUrdu);
+            el.thread.scrollTop = el.thread.scrollHeight;
+            return;
+          }
+          if (renderQueued) return;
+          renderQueued = true;
+          requestAnimationFrame(function () {
+            renderQueued = false;
+            var isUrdu = hasUrdu(assistantMsg.text);
+            bubbleElem.setAttribute("dir", isUrdu ? "rtl" : "ltr");
+            bubbleElem.innerHTML = renderBody(assistantMsg.text, isUrdu);
+            el.thread.scrollTop = el.thread.scrollHeight;
+          });
+        }
+
+        while (true) {
+          var chunk = await reader.read();
+          if (chunk.done) {
+            updateUi(true);
+            break;
+          }
+          buffer += decoder.decode(chunk.value, { stream: true });
+
+          var lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
+
+          for (var j = 0; j < lines.length; j++) {
+            var line = lines[j].trim();
+            if (line.indexOf("data: ") === 0) {
+              var payload = line.slice(6);
+              if (payload === "[DONE]") {
+                updateUi(true);
+                break;
+              }
+              try {
+                var parsed = JSON.parse(payload);
+                if (parsed.text) {
+                  assistantMsg.text += parsed.text;
+                  updateUi(false);
+                }
+                if (parsed.error) {
+                  assistantMsg.text = parsed.error;
+                  assistantMsg.failed = true;
+                  updateUi(true);
+                }
+              } catch (e) {}
+            }
+          }
+        }
+        updateUi(true);
+        if (assistantMsg.text && !assistantMsg.failed) {
+          prefetchTts(assistantMsg.text);
+        }
+      } catch (err) {
+        assistantMsg.text = "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں۔ براہ کرم دوبارہ کوشش کریں۔";
+        assistantMsg.failed = true;
+        bubbleElem.className = "bubble";
+        bubbleElem.setAttribute("dir", "rtl");
+        assistantElem.className = "msg assistant";
+        bubbleElem.innerHTML = renderBody(assistantMsg.text, true);
+      }
+
+      busy = false;
+      saveChats();
+      renderHistory();
+    }
+  }
+
+  /* ---------- Send User Message (Immediate, No Delays) ---------- */
+  async function send() {
+    if (busy) return;
+    var text = el.input.value.trim();
+    if (!text && !pending.length) return;
+
+    // Default smart analysis prompt when user sends a video or photo without typing text
+    if (!text && pending.length > 0) {
+      var hasVid = pending.some(function (p) { return p.type === "video"; });
+      var hasImg = pending.some(function (p) { return p.type === "image"; });
+      if (hasVid) {
+        text = "اس ویڈیو کو مکمل اینالائز کریں: بتائیں یہ ویڈیو کس طرح اور کس حساب سے بنی ہے، اس کے اندر کیا مسائل یا خامیاں ہیں، اور اسے ٹھیک یا بہتر کرنے کی تفصیلی تجاویز دیں۔";
+      } else if (hasImg) {
+        text = "اس تصویر کو غور سے دیکھ کر اینالائز کریں، اگر اس میں کوئی مسئلہ نظر آ رہا ہے تو اس کی نشاندہی کریں اور اسے حل کرنے کی تجاویز دیں۔";
+      } else {
+        text = "اس فائل کا تجزیہ کریں اور مکمل تفصیل بتائیں۔";
+      }
+    }
+
+    var c = current();
+    if (!c) {
+      c = { id: uid(), title: (text || "Photo or video").slice(0, 40), pinned: false, messages: [] };
+      state.chats.push(c);
+      state.currentId = c.id;
+      undoStack = []; redoStack = [];
+      el.home.hidden = true;
+      el.thread.hidden = false;
+    }
+
+    snapshot();
+    var media = pending.slice();
+    var userMsg = { role: "user", text: text, media: media };
+    c.messages.push(userMsg);
+    pending = [];
+    el.input.value = ""; autosize();
+
+    el.home.hidden = true;
+    el.thread.hidden = false;
+    el.messages.appendChild(createMessageElement(userMsg, c.messages.length - 1));
+    el.thread.scrollTop = el.thread.scrollHeight;
+    renderAttachments();
+    updateUndoButtons();
+    saveChats();
+    renderHistory();
+
+    triggerAiReplyForCurrentChat();
+  }
+
+  function autosize() {
+    el.input.style.height = "auto";
+    el.input.style.height = Math.min(el.input.scrollHeight, 180) + "px";
+  }
+
+  /* ---------- Drawer and features ---------- */
+  function openMenu() { el.sidebar.classList.add("open"); el.scrim.classList.add("show"); }
+  function closeMenu() { el.sidebar.classList.remove("open"); el.scrim.classList.remove("show"); }
+
+  el.menuBtn.addEventListener("click", openMenu);
+  el.closeMenu.addEventListener("click", closeMenu);
+  el.scrim.addEventListener("click", closeMenu);
+  if (el.newChatBtn) el.newChatBtn.addEventListener("click", newChat);
+
+  if (el.searchInput) {
+    el.searchInput.addEventListener("input", function () {
+      renderHistory();
+    });
+  }
+
+  /* ---------- Settings ---------- */
+  function openSettings() {
+    el.nameInput.value = state.profile.name || "";
+    if (el.providerSelect) el.providerSelect.value = state.providerPreference || "auto";
+    applyTheme(currentThemeSetting());
+    closeMenu();
+    el.settingsModal.classList.add("show");
+    renderProfile();
+  }
+  function closeSettings() { el.settingsModal.classList.remove("show"); }
+  function currentThemeSetting() {
+    try { var t = localStorage.getItem(THEME_KEY); return t === "light" || t === "dark" ? t : null; } catch (e) { return null; }
+  }
+  el.settingsBtn.addEventListener("click", openSettings);
+  el.closeSettings.addEventListener("click", closeSettings);
+  el.settingsModal.addEventListener("click", function (e) { if (e.target === el.settingsModal) closeSettings(); });
+  el.nameInput.addEventListener("input", function () {
+    state.profile.name = el.nameInput.value.trim() || "User";
+    saveProfile(); renderProfile();
+  });
+  if (el.providerSelect) {
+    el.providerSelect.addEventListener("change", function () {
+      state.providerPreference = el.providerSelect.value;
+      saveProvider();
+    });
+  }
+  el.photoBtn.addEventListener("click", function () { el.photoInput.click(); });
+  el.photoInput.addEventListener("change", function () {
+    var f = el.photoInput.files && el.photoInput.files[0];
+    el.photoInput.value = "";
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      state.profile.photo = String(reader.result);
+      saveProfile(); renderProfile();
+    };
+    reader.readAsDataURL(f);
+  });
+  document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+    b.addEventListener("click", function () { applyTheme(b.getAttribute("data-theme-set")); });
+  });
+  el.clearAll.addEventListener("click", function () {
+    state.chats = []; state.currentId = null;
+    undoStack = []; redoStack = [];
+    saveChats(); render();
+  });
+
+  /* ---------- Attachments ---------- */
+  function processAttachment(f) {
+    if (!f) return;
+    var isImg = f.type.indexOf("image") === 0;
+    var isVid = f.type.indexOf("video") === 0;
+    var type = isVid ? "video" : (isImg ? "image" : "file");
+    var url = "";
+    try { url = URL.createObjectURL(f); } catch (e) {}
+
+    if (isImg) {
+      var reader = new FileReader();
+      reader.onload = function (evt) {
+        var img = new Image();
+        img.onload = function () {
+          var maxDim = 1600;
+          var w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          var dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+          var base64 = dataUrl.split(",")[1];
+          pending.push({
+            type: "image",
+            name: f.name || "screenshot.jpg",
+            url: dataUrl,
+            mimeType: "image/jpeg",
+            data: base64
+          });
+          renderAttachments();
+        };
+        img.onerror = function () {
+          var fullB64 = String(evt.target.result).split(",")[1];
+          pending.push({
+            type: "image",
+            name: f.name || "image.png",
+            url: url,
+            mimeType: f.type || "image/png",
+            data: fullB64
+          });
+          renderAttachments();
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(f);
+    } else if (isVid) {
+      var video = document.createElement("video");
+      video.preload = "metadata";
+      video.src = url;
+      video.muted = true;
+      video.onloadeddata = function () {
+        try { video.currentTime = Math.min(1, (video.duration || 2) / 2); } catch (e) {}
+      };
+      video.onseeked = function () {
+        try {
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.min(video.videoWidth || 800, 1280);
+          canvas.height = Math.round((canvas.width * (video.videoHeight || 600)) / (video.videoWidth || 800));
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          var snapDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+          pending.push({
+            type: "video",
+            name: f.name || "video.mp4",
+            url: url,
+            mimeType: "image/jpeg",
+            data: snapDataUrl.split(",")[1]
+          });
+          renderAttachments();
+        } catch (e) {
+          fallbackVid();
+        }
+      };
+      function fallbackVid() {
+        var r = new FileReader();
+        r.onload = function (evt) {
+          pending.push({
+            type: "video",
+            name: f.name || "video.mp4",
+            url: url,
+            mimeType: f.type || "video/mp4",
+            data: String(evt.target.result).split(",")[1]
+          });
+          renderAttachments();
+        };
+        r.readAsDataURL(f);
+      }
+      video.onerror = fallbackVid;
+    } else {
+      var ext = (f.name || "").split(".").pop().toLowerCase();
+      var textExts = ["txt", "js", "ts", "jsx", "tsx", "py", "html", "css", "json", "md", "csv", "c", "cpp", "h", "java", "sql", "xml", "yaml", "yml", "sh", "bat", "php", "go", "rs", "rb"];
+      var isTextFile = textExts.indexOf(ext) !== -1 || (f.type && f.type.indexOf("text") === 0);
+
+      if (isTextFile) {
+        var tr = new FileReader();
+        tr.onload = function (evt) {
+          var content = String(evt.target.result || "");
+          pending.push({
+            type: "file",
+            name: f.name || "file.txt",
+            url: url,
+            mimeType: f.type || "text/plain",
+            data: btoa(unescape(encodeURIComponent(content.slice(0, 100000)))),
+            textContent: content
+          });
+          renderAttachments();
+        };
+        tr.readAsText(f);
+      } else {
+        var r = new FileReader();
+        r.onload = function (evt) {
+          pending.push({
+            type: "file",
+            name: f.name || "file.bin",
+            url: url,
+            mimeType: f.type || "application/octet-stream",
+            data: String(evt.target.result).split(",")[1]
+          });
+          renderAttachments();
+        };
+        r.readAsDataURL(f);
+      }
+    }
+  }
+
+  /* ---------- Plus (+) Menu: Camera, Files, Gallery ---------- */
+  function closeAttachMenu() {
+    if (el.attachMenu) el.attachMenu.classList.remove("open");
+  }
+
+  el.attachBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (el.attachMenu) {
+      el.attachMenu.classList.toggle("open");
+    } else {
+      el.fileInput.click();
+    }
+  });
+
+  if (el.menuCameraBtn) {
+    el.menuCameraBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      if (el.cameraInput) el.cameraInput.click();
+    });
+  }
+  if (el.menuFilesBtn) {
+    el.menuFilesBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      if (el.fileInput) el.fileInput.click();
+    });
+  }
+  if (el.menuGalleryBtn) {
+    el.menuGalleryBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      if (el.galleryInput) el.galleryInput.click();
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    if (el.attachWrap && !el.attachWrap.contains(e.target)) {
+      closeAttachMenu();
+    }
+  });
+
+  if (el.cameraInput) {
+    el.cameraInput.addEventListener("change", function () {
+      Array.prototype.forEach.call(el.cameraInput.files, processAttachment);
+      el.cameraInput.value = "";
+    });
+  }
+  el.fileInput.addEventListener("change", function () {
+    Array.prototype.forEach.call(el.fileInput.files, processAttachment);
+    el.fileInput.value = "";
+  });
+  if (el.galleryInput) {
+    el.galleryInput.addEventListener("change", function () {
+      Array.prototype.forEach.call(el.galleryInput.files, processAttachment);
+      el.galleryInput.value = "";
+    });
+  }
+
+  // Direct clipboard paste for screenshots (Ctrl+V anywhere in composer)
+  window.addEventListener("paste", function (e) {
+    if (!e.clipboardData || !e.clipboardData.items) return;
+    var items = e.clipboardData.items;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        var blob = items[i].getAsFile();
+        if (blob) {
+          processAttachment(new File([blob], "screenshot_" + Date.now().toString(36) + ".png", { type: blob.type }));
+        }
+      }
+    }
+  });
+  el.attachments.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-remove-pending]");
+    if (!b) return;
+    pending.splice(Number(b.getAttribute("data-remove-pending")), 1);
+    renderAttachments();
+  });
+
+  /* ---------- Dual-Engine 1-Second Voice Input (Web Speech + AI Audio Transcription) ---------- */
+  var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null;
+  var listening = false;
+  var mediaRecorder = null;
+  var audioStream = null;
+  var audioChunks = [];
+  var silenceTimer = null;
+  var audioCtx = null;
+  var voiceMonitorFrame = null;
+  var browserRecognizedText = "";
+  var baseInputBeforeMic = "";
+
+  function setMicUiState(stateMode) {
+    if (stateMode === "listening") {
+      el.micBtn.classList.add("on");
+      el.micBtn.setAttribute("title", "سن رہا ہے… روکنے کے لیے دبائیں / Listening…");
+      el.input.setAttribute("placeholder", "سن رہا ہے... بولیں / Listening...");
+    } else if (stateMode === "transcribing") {
+      el.micBtn.classList.remove("on");
+      el.micBtn.setAttribute("title", "آواز کو تحریر میں بدلا جا رہا ہے...");
+      el.input.setAttribute("placeholder", "آواز کو تحریر میں بدلا جا رہا ہے... / Converting voice...");
+    } else {
+      el.micBtn.classList.remove("on");
+      el.micBtn.setAttribute("title", "Voice input (آواز سے لکھیں)");
+      el.input.setAttribute("placeholder", "Message Vegas AI");
+    }
+  }
+
+  function cleanupMediaStream() {
+    if (voiceMonitorFrame) { cancelAnimationFrame(voiceMonitorFrame); voiceMonitorFrame = null; }
+    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+    if (audioCtx) {
+      try { audioCtx.close(); } catch (e) {}
+      audioCtx = null;
+    }
+    if (audioStream) {
+      try { audioStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+      audioStream = null;
+    }
+  }
+
+  function stopVoiceCapture() {
+    listening = false;
+    if (rec) {
+      try { rec.stop(); } catch (e) {}
+    }
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      try { mediaRecorder.stop(); } catch (e) { cleanupMediaStream(); setMicUiState("idle"); }
+    } else {
+      cleanupMediaStream();
+      setMicUiState("idle");
+    }
+  }
+
+  async function startVoiceCapture() {
+    listening = true;
+    browserRecognizedText = "";
+    baseInputBeforeMic = el.input.value ? el.input.value.trim() + " " : "";
+    setMicUiState("listening");
+
+    // Engine 1: Live Browser SpeechRecognition (instant interim words as user speaks)
+    if (Rec) {
+      try {
+        rec = new Rec();
+        rec.lang = "ur-PK";
+        rec.interimResults = true;
+        rec.continuous = true;
+        rec.onresult = function (e) {
+          var t = "";
+          for (var i = 0; i < e.results.length; i++) {
+            t += e.results[i][0].transcript;
+          }
+          if (t && t.trim()) {
+            browserRecognizedText = t.trim();
+            el.input.value = baseInputBeforeMic + browserRecognizedText;
+            autosize();
+          }
+        };
+        rec.onerror = function () {};
+        rec.start();
+      } catch (e) {}
+    }
+
+    // Engine 2: MediaRecorder + Gemini/Whisper 1-second server transcription + Silence Auto-Stop
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+
+        if (!listening) {
+          cleanupMediaStream();
+          return;
+        }
+
+        audioChunks = [];
+        var mimeType = "audio/webm";
+        if (typeof MediaRecorder !== "undefined") {
+          if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) mimeType = "audio/webm;codecs=opus";
+          else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
+          else if (MediaRecorder.isTypeSupported("audio/ogg")) mimeType = "audio/ogg";
+        }
+
+        mediaRecorder = new MediaRecorder(audioStream, { mimeType: mimeType });
+        mediaRecorder.ondataavailable = function (ev) {
+          if (ev.data && ev.data.size > 0) audioChunks.push(ev.data);
+        };
+
+        mediaRecorder.onstop = function () {
+          cleanupMediaStream();
+          // If Browser SpeechRecognition already captured text, we are done in 0ms!
+          if (browserRecognizedText && browserRecognizedText.length > 0) {
+            setMicUiState("idle");
+            el.input.focus();
+            return;
+          }
+
+          if (!audioChunks.length) {
+            setMicUiState("idle");
+            return;
+          }
+
+          var blob = new Blob(audioChunks, { type: mimeType });
+          if (blob.size < 400) {
+            setMicUiState("idle");
+            return;
+          }
+
+          setMicUiState("transcribing");
+          var reader = new FileReader();
+          reader.onloadend = async function () {
+            try {
+              var base64Audio = String(reader.result || "");
+              var res = await fetch(API_TRANSCRIBE_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ audio: base64Audio, mimeType: mimeType.split(";")[0] })
+              });
+              if (res.ok) {
+                var data = await res.json();
+                if (data.text && data.text.trim()) {
+                  el.input.value = baseInputBeforeMic + data.text.trim();
+                  autosize();
+                  el.input.focus();
+                }
+              }
+            } catch (err) {}
+            setMicUiState("idle");
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mediaRecorder.start(200);
+
+        // Automatic silence detection: once user speaks and pauses for 1.6s, auto-convert!
+        try {
+          var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+            var source = audioCtx.createMediaStreamSource(audioStream);
+            var analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            source.connect(analyser);
+            var dataArray = new Uint8Array(analyser.frequencyBinCount);
+            var hasSpoken = false;
+            var lastSpeechTime = Date.now();
+            var startTime = Date.now();
+
+            function checkSilence() {
+              if (!listening) return;
+              analyser.getByteFrequencyData(dataArray);
+              var sum = 0;
+              for (var k = 0; k < dataArray.length; k++) sum += dataArray[k];
+              var avg = sum / dataArray.length;
+
+              if (avg > 14) {
+                hasSpoken = true;
+                lastSpeechTime = Date.now();
+              } else if (hasSpoken && (Date.now() - lastSpeechTime > 1650)) {
+                stopVoiceCapture();
+                return;
+              } else if (!hasSpoken && (Date.now() - startTime > 8000)) {
+                stopVoiceCapture();
+                return;
+              }
+              voiceMonitorFrame = requestAnimationFrame(checkSilence);
+            }
+            voiceMonitorFrame = requestAnimationFrame(checkSilence);
+          }
+        } catch (e) {}
+      } catch (err) {
+        if (!Rec) {
+          listening = false;
+          setMicUiState("idle");
+        }
+      }
+    }
+  }
+
+  el.micBtn.addEventListener("click", function () {
+    if (listening) {
+      stopVoiceCapture();
+    } else {
+      startVoiceCapture();
+    }
+  });
+
+  /* ---------- Main events ---------- */
+  el.composer.addEventListener("submit", function (e) { e.preventDefault(); send(); });
+  el.input.addEventListener("input", autosize);
+  el.input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  el.undoBtn.addEventListener("click", undo);
+  el.redoBtn.addEventListener("click", redo);
+
+  document.addEventListener("keydown", function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.target === el.input) return;
+    if (e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  });
+
+  el.history.addEventListener("click", function (e) {
+    var del = e.target.closest("[data-delete-chat]");
+    if (del) { deleteChat(del.getAttribute("data-delete-chat")); return; }
+
+    var pin = e.target.closest("[data-pin-chat]");
+    if (pin) { togglePinChat(pin.getAttribute("data-pin-chat")); return; }
+
+    var rename = e.target.closest("[data-rename-chat]");
+    if (rename) { renameChat(rename.getAttribute("data-rename-chat")); return; }
+
+    var open = e.target.closest("[data-open]");
+    if (open) openChat(open.getAttribute("data-open"));
+  });
+
+  el.messages.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    var msg = btn.closest(".msg");
+    var index = msg ? Number(msg.getAttribute("data-index")) : -1;
+    var c = current();
+    var m = c && c.messages && c.messages[index];
+    var action = btn.getAttribute("data-action");
+
+    if (action === "delete-msg") deleteMessage(index);
+    else if (action === "copy-msg" && m) copyText(m.text).then(function () { flashCopyIcon(btn); });
+    else if (action === "listen-msg" && m) speak(m.text, index, btn);
+    else if (action === "download-msg" && m) {
+      downloadText("vegas-ai-reply.txt", m.text, "text/plain");
+    }
+    else if (action === "copy-code") {
+      var codeText = btn.closest("pre").querySelector("code").textContent;
+      copyText(codeText).then(function () {
+        var oldText = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = oldText; }, 1200);
+      });
+    }
+    else if (action === "download-code") {
+      var codeElem = btn.closest("pre").querySelector("code");
+      var codeText = codeElem ? codeElem.textContent : "";
+      var lang = (btn.getAttribute("data-lang") || "").toLowerCase().trim();
+      var extMap = {
+        python: "py", py: "py",
+        javascript: "js", js: "js",
+        typescript: "ts", ts: "ts",
+        html: "html", htm: "html",
+        css: "css",
+        json: "json",
+        sql: "sql",
+        bash: "sh", sh: "sh", shell: "sh",
+        c: "c", cpp: "cpp", "c++": "cpp",
+        java: "java",
+        go: "go",
+        rust: "rs", rs: "rs",
+        php: "php",
+        ruby: "rb", rb: "rb",
+        xml: "xml",
+        yaml: "yaml", yml: "yaml",
+        markdown: "md", md: "md",
+        text: "txt", txt: "txt"
+      };
+      var ext = extMap[lang] || (lang && lang.length <= 5 ? lang : "txt");
+      var filename = "code_" + Date.now().toString(36) + "." + ext;
+      downloadText(filename, codeText, "text/plain");
+      var oldText = btn.textContent;
+      btn.textContent = "Saved!";
+      setTimeout(function () { btn.textContent = oldText; }, 1200);
+    }
+  });
+
+  /* ---------- Init ---------- */
+  loadState();
+  applyTheme(currentThemeSetting());
+  render();
+  autosize();
+})();
+</script>
+</body>
+</html>
