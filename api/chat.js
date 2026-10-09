@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import uiStudioHandler, { renderUiConceptSvg } from "./ui-studio.js";
 import imageHandler from "./image.js";
 
@@ -6,25 +7,28 @@ const BASE_SYSTEM_INSTRUCTION =
 
 const MODELS_BY_MODE = {
   fast: [
-    "gemini-3.8-flash",
-    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite",
     "gemini-3-flash-preview",
-    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
   ],
   balanced: [
-    "gemini-3.8-flash",
-    "gemini-3.5-flash",
-    "gemini-3-flash-preview",
     "gemini-3.1-flash-lite",
-    "gemini-flash-latest",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
   ],
   deep: [
-    "gemini-3.8-flash",
     "gemini-3.5-flash",
-    "gemini-3-flash-preview",
+    "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
-    "gemini-flash-latest",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview",
   ],
 };
 
@@ -325,11 +329,12 @@ async function transcribeAudioWithGemini(audioBase64, mimeType, apiKey) {
   }
 
   const sttModels = [
-    "gemini-3.8-flash",
-    "gemini-3.5-flash",
-    "gemini-3-flash-preview",
     "gemini-3.1-flash-lite",
-    "gemini-flash-latest",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
   ];
 
   const promptText =
@@ -512,10 +517,10 @@ export default async function handler(req, res) {
     // Extract live URL / GitHub / YouTube context if present in the latest message
     const urlContext = await extractUrlContext(latestUserText);
 
-    // Build multi-turn contents array for Gemini
+    // Build multi-turn contents array for Gemini (last 10 messages)
     let contents = [];
     if (rawMessages && rawMessages.length) {
-      const recent = rawMessages.slice(-16);
+      const recent = rawMessages.slice(-10);
       contents = recent.map((m, idx) => {
         const parts = [];
         if (Array.isArray(m.media)) {
@@ -563,48 +568,55 @@ export default async function handler(req, res) {
       ];
     }
 
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+    });
+    const wantStream = Boolean(body.stream);
     const modelsToTry = MODELS_BY_MODE[aiMode] || MODELS_BY_MODE.fast;
     let reply = "";
+    let headersSent = false;
 
     for (const modelName of modelsToTry) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
-          apiKey
-        )}`;
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "aistudio-build",
+        const stream = await ai.models.generateContentStream({
+          model: modelName,
+          contents,
+          config: {
+            systemInstruction: systemPrompt,
+            thinkingConfig: { thinkingBudget: 0 },
           },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemPrompt }],
-            },
-            contents,
-          }),
         });
 
-        if (!response.ok) {
-          continue;
-        }
-
-        const data = await response.json();
-        const parts = data?.candidates?.[0]?.content?.parts;
-        if (Array.isArray(parts)) {
-          const text = parts
-            .map((p) => (typeof p?.text === "string" ? p.text : ""))
-            .join("")
-            .trim();
-          if (text) {
-            reply = text;
-            break;
+        let fullText = "";
+        for await (const chunk of stream) {
+          if (chunk.text) {
+            fullText += chunk.text;
+            if (wantStream) {
+              if (!headersSent) {
+                res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+                res.setHeader("Cache-Control", "no-cache, no-transform");
+                res.setHeader("Connection", "keep-alive");
+                headersSent = true;
+              }
+              res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+              if (typeof res.flush === "function") res.flush();
+            }
           }
         }
+
+        if (fullText) {
+          reply = fullText.trim();
+          break;
+        }
       } catch (_err) {
-        // Try next model in fallback list
+        if (headersSent) break;
       }
+    }
+
+    if (headersSent) {
+      res.write("data: [DONE]\n\n");
+      return res.end();
     }
 
     if (!reply) {

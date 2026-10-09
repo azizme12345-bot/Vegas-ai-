@@ -2040,41 +2040,92 @@
         signal: activeAbortController ? activeAbortController.signal : undefined,
         body: JSON.stringify({
           message: text,
-          messages: c.messages,
+          messages: c.messages.slice(-10),
           customInstructions: state.prefs.customInstructions || "",
           responseLength: state.prefs.responseLength || "balanced",
-          aiMode: state.prefs.aiMode || "fast"
+          aiMode: state.prefs.aiMode || "fast",
+          stream: true
         })
       });
-      var data = await res.json();
-      if (typIndicator.parentNode) typIndicator.remove();
 
-      var assistantMsg = { role: "assistant", text: "", media: [] };
-      if (data.imageUrl) {
-        assistantMsg.media.push({
-          type: "image",
-          name: "generated-image.png",
-          url: data.imageUrl
-        });
-      }
-      if (data.error) {
-        assistantMsg.text = data.error;
-        assistantMsg.failed = true;
-      } else if (data.reply) {
-        assistantMsg.text = data.reply;
-      } else if (!data.imageUrl) {
-        assistantMsg.text = "معذرت، کوئی جواب موصول نہیں ہوا۔";
-        assistantMsg.failed = true;
-      }
+      var contentType = (res.headers.get("content-type") || "").toLowerCase();
+      if (contentType.indexOf("text/event-stream") !== -1 && res.body && res.body.getReader) {
+        if (typIndicator.parentNode) typIndicator.remove();
+        var assistantMsg = { role: "assistant", text: "", media: [] };
+        c.messages.push(assistantMsg);
+        var msgIdx = c.messages.length - 1;
+        var msgEl = createMessageElement(assistantMsg, msgIdx);
+        el.messages.appendChild(msgEl);
+        var bubbleEl = msgEl.querySelector(".bubble");
 
-      c.messages.push(assistantMsg);
-      state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
-      savePrefs();
-      el.messages.appendChild(createMessageElement(assistantMsg, c.messages.length - 1));
-      el.thread.scrollTop = el.thread.scrollHeight;
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var sseBuffer = "";
 
-      if (assistantMsg.text && !assistantMsg.failed) {
-        prefetchTts(assistantMsg.text);
+        while (true) {
+          var readRes = await reader.read();
+          if (readRes.done) break;
+          sseBuffer += decoder.decode(readRes.value, { stream: true });
+          var lines = sseBuffer.split("\n");
+          sseBuffer = lines.pop() || "";
+
+          for (var li = 0; li < lines.length; li++) {
+            var line = lines[li].trim();
+            if (!line || line.indexOf("data:") !== 0) continue;
+            var payload = line.slice(5).trim();
+            if (payload === "[DONE]") break;
+            try {
+              var parsed = JSON.parse(payload);
+              if (parsed && parsed.text) {
+                assistantMsg.text += parsed.text;
+              }
+            } catch (_e) {}
+          }
+
+          if (bubbleEl) {
+            var isU = hasUrdu(assistantMsg.text);
+            bubbleEl.setAttribute("dir", isU ? "rtl" : "ltr");
+            bubbleEl.innerHTML = renderBody(assistantMsg.text, isU);
+          }
+          el.thread.scrollTop = el.thread.scrollHeight;
+        }
+
+        state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
+        savePrefs();
+        if (assistantMsg.text && !assistantMsg.failed) {
+          prefetchTts(assistantMsg.text);
+        }
+      } else {
+        var data = await res.json();
+        if (typIndicator.parentNode) typIndicator.remove();
+
+        var assistantMsg = { role: "assistant", text: "", media: [] };
+        if (data.imageUrl) {
+          assistantMsg.media.push({
+            type: "image",
+            name: "generated-image.png",
+            url: data.imageUrl
+          });
+        }
+        if (data.error) {
+          assistantMsg.text = data.error;
+          assistantMsg.failed = true;
+        } else if (data.reply) {
+          assistantMsg.text = data.reply;
+        } else if (!data.imageUrl) {
+          assistantMsg.text = "معذرت، کوئی جواب موصول نہیں ہوا۔";
+          assistantMsg.failed = true;
+        }
+
+        c.messages.push(assistantMsg);
+        state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
+        savePrefs();
+        el.messages.appendChild(createMessageElement(assistantMsg, c.messages.length - 1));
+        el.thread.scrollTop = el.thread.scrollHeight;
+
+        if (assistantMsg.text && !assistantMsg.failed) {
+          prefetchTts(assistantMsg.text);
+        }
       }
     } catch (err) {
       if (typIndicator.parentNode) typIndicator.remove();
@@ -2894,12 +2945,12 @@
                 if (rms > 0.022) {
                   hasSpoken = true;
                   lastVoiceTime = now;
-                } else if (hasSpoken && (now - lastVoiceTime > 1900)) {
+                } else if (hasSpoken && (now - lastVoiceTime > 950)) {
                   stopVoiceInput();
                 } else if (!hasSpoken && (now - startTime > 8000)) {
                   stopVoiceInput();
                 }
-              }, 120);
+              }, 80);
             }
           } catch (e) {}
 

@@ -323,11 +323,12 @@ async function startServer() {
 
         if (activeGemini) {
           const sttModels = [
-            'gemini-3.8-flash',
-            'gemini-3.5-flash',
-            'gemini-3-flash-preview',
             'gemini-3.1-flash-lite',
-            'gemini-flash-latest',
+            'gemini-3.5-flash-lite',
+            'gemini-2.5-flash-lite',
+            'gemini-3-flash-preview',
+            'gemini-3.5-flash',
+            'gemini-2.5-flash',
           ];
           for (const m of sttModels) {
             if (isModelExhausted(m)) continue;
@@ -355,6 +356,9 @@ async function startServer() {
                     ],
                   },
                 ],
+                config: {
+                  thinkingConfig: { thinkingBudget: 0 },
+                },
               });
               const transcript = (response.text || '').trim().replace(/^["'“”]+|["'“”]+$/g, '');
               if (transcript && !transcript.includes('[NO_SPEECH]')) {
@@ -363,7 +367,15 @@ async function startServer() {
               return res.json({ text: '', reply: '' });
             } catch (err: any) {
               const msg = String(err?.message || err || '');
-              if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+              const status = err?.status || err?.code;
+              if (
+                status === 404 ||
+                status === 429 ||
+                msg.includes('404') ||
+                msg.includes('NOT_FOUND') ||
+                msg.includes('429') ||
+                msg.includes('RESOURCE_EXHAUSTED')
+              ) {
                 markModelExhausted(m, 30 * 60 * 1000);
               }
             }
@@ -392,28 +404,52 @@ async function startServer() {
           lowerPrompt
         );
 
-      if (isImgReq && activeGemini && !isModelExhausted('gemini-3.1-flash-lite-image')) {
-        try {
-          const cleanImgPrompt = latestUserText.replace(/^\/image\s+/i, '').trim();
-          const imgRes = await activeGemini.models.generateContent({
-            model: 'gemini-3.1-flash-lite-image',
-            contents: { parts: [{ text: cleanImgPrompt }] },
-            config: { imageConfig: { aspectRatio: '1:1' } },
-          });
-          const parts = imgRes.candidates?.[0]?.content?.parts || [];
-          for (const part of parts) {
-            if (part.inlineData?.data) {
-              const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-              return res.json({
-                imageUrl,
-                reply: 'آپ کی فرمائش کے مطابق تصویر تیار کر دی گئی ہے:',
-              });
+      if (isImgReq) {
+        const cleanImgPrompt = latestUserText.replace(/^\/image\s+/i, '').trim();
+        if (activeGemini && !isModelExhausted('gemini-3.1-flash-lite-image')) {
+          try {
+            const imgRes = await activeGemini.models.generateContent({
+              model: 'gemini-3.1-flash-lite-image',
+              contents: { parts: [{ text: cleanImgPrompt }] },
+              config: { imageConfig: { aspectRatio: '1:1' } },
+            });
+            const parts = imgRes.candidates?.[0]?.content?.parts || [];
+            for (const part of parts) {
+              if (part.inlineData?.data) {
+                const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+                return res.json({
+                  imageUrl,
+                  reply: 'آپ کی فرمائش کے مطابق تصویر تیار کر دی گئی ہے:',
+                });
+              }
             }
+          } catch (_imgErr: any) {
+            markModelExhausted('gemini-3.1-flash-lite-image', 30 * 60 * 1000);
           }
-        } catch (_imgErr) {}
+        }
+        const svgUrl = renderUiConceptSvg(
+          {
+            title: cleanImgPrompt.slice(0, 36),
+            styleBadge: 'AI Visual',
+            description: cleanImgPrompt,
+            appType: 'desktop',
+            uiSpec: {
+              brandName: 'Vegas AI',
+              heroHeadline: cleanImgPrompt.slice(0, 42),
+              heroSubtext: 'AI Generated Visual Concept',
+            },
+          },
+          0
+        );
+        return res.json({
+          imageUrl: svgUrl,
+          reply: 'آپ کی فرمائش کے مطابق تصویر تیار کر دی گئی ہے:',
+        });
       }
 
-      const urlContext = await extractUrlContext(latestUserText);
+      const urlContext = /https?:\/\//i.test(latestUserText)
+        ? await extractUrlContext(latestUserText)
+        : '';
 
       let systemPrompt = coreSystemPrompt;
       if (responseLength === 'short') {
@@ -427,7 +463,7 @@ async function startServer() {
         systemPrompt += `\nصارف کی خصوصی ہدایات: ${String(customInstructions).trim()}`;
       }
 
-      const recentMessages = chatMessages.slice(-16);
+      const recentMessages = chatMessages.slice(-10);
       const geminiContents = recentMessages.map((m: any, idx: number) => {
         const parts: any[] = [];
         if (m.media && Array.isArray(m.media)) {
@@ -463,6 +499,7 @@ async function startServer() {
         };
       });
 
+      const wantStream = Boolean(req.body.stream);
       let order: ('gemini' | 'openai')[] = ['gemini', 'openai'];
       if (providerPreference === 'openai') {
         order = ['openai', 'gemini'];
@@ -470,29 +507,32 @@ async function startServer() {
 
       let replyText = '';
       let success = false;
+      let headersSentForStream = false;
 
       for (const provider of order) {
         if (provider === 'gemini' && activeGemini) {
           const modelsToTry =
             aiMode === 'deep'
               ? [
-                  { id: 'gemini-3.8-flash' },
                   { id: 'gemini-3.5-flash' },
-                  { id: 'gemini-3-flash-preview' },
+                  { id: 'gemini-2.5-flash' },
                   { id: 'gemini-3.1-flash-lite' },
-                  { id: 'gemini-flash-latest' },
+                  { id: 'gemini-3.5-flash-lite' },
+                  { id: 'gemini-2.5-flash-lite' },
+                  { id: 'gemini-3-flash-preview' },
                 ]
               : [
-                  { id: 'gemini-3.8-flash' },
-                  { id: 'gemini-3.5-flash' },
                   { id: 'gemini-3.1-flash-lite' },
+                  { id: 'gemini-3.5-flash-lite' },
+                  { id: 'gemini-2.5-flash-lite' },
                   { id: 'gemini-3-flash-preview' },
-                  { id: 'gemini-flash-latest' },
+                  { id: 'gemini-3.5-flash' },
+                  { id: 'gemini-2.5-flash' },
                 ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;
             try {
-              const response = await activeGemini.models.generateContent({
+              const stream = await activeGemini.models.generateContentStream({
                 model: m.id,
                 contents: geminiContents,
                 config: {
@@ -500,8 +540,26 @@ async function startServer() {
                   thinkingConfig: { thinkingBudget: 0 },
                 },
               });
-              if (response.text) {
-                replyText = response.text;
+              let fullText = '';
+              for await (const chunk of stream) {
+                if (chunk.text) {
+                  fullText += chunk.text;
+                  if (wantStream) {
+                    if (!headersSentForStream) {
+                      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+                      res.setHeader('Cache-Control', 'no-cache, no-transform');
+                      res.setHeader('Connection', 'keep-alive');
+                      headersSentForStream = true;
+                    }
+                    res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+                    if (typeof (res as any).flush === 'function') {
+                      (res as any).flush();
+                    }
+                  }
+                }
+              }
+              if (fullText) {
+                replyText = fullText;
                 success = true;
                 break;
               }
@@ -519,6 +577,7 @@ async function startServer() {
               ) {
                 markModelExhausted(m.id, 60 * 60 * 1000);
               }
+              if (headersSentForStream) break;
             }
           }
           if (success) break;
@@ -553,6 +612,11 @@ async function startServer() {
         }
       }
 
+      if (headersSentForStream) {
+        res.write('data: [DONE]\n\n');
+        return res.end();
+      }
+
       if (!success || !replyText) {
         return res.json({
           error: 'معذرت، اس وقت تمام AI ماڈلز کا کوٹہ ختم ہے یا مصروف ہیں۔ براہ کرم کچھ دیر بعد کوشش کریں۔',
@@ -565,7 +629,7 @@ async function startServer() {
     }
   });
 
-  // /api/transcribe - 1-Second Voice-to-Text Route (Gemini 3.1 Flash Lite + OpenAI Whisper)
+  // /api/transcribe - 1-Second Voice-to-Text Route (Gemini Flash Lite + OpenAI Whisper)
   app.post('/api/transcribe', async (req, res) => {
     try {
       const { audio, mimeType } = req.body;
@@ -583,15 +647,16 @@ async function startServer() {
         return res.status(400).json({ error: 'Invalid audio payload' });
       }
 
-      // 1. Primary: Ultra-fast Gemini audio transcription (~1.2s)
+      // 1. Primary: Ultra-fast Gemini audio transcription (~0.8s)
       const activeGemini = getGeminiAi() || geminiAi;
       if (activeGemini) {
         const sttModels = [
-          'gemini-3.8-flash',
-          'gemini-3.5-flash',
-          'gemini-3-flash-preview',
           'gemini-3.1-flash-lite',
-          'gemini-flash-latest',
+          'gemini-3.5-flash-lite',
+          'gemini-2.5-flash-lite',
+          'gemini-3-flash-preview',
+          'gemini-3.5-flash',
+          'gemini-2.5-flash',
         ];
         for (const m of sttModels) {
           if (isModelExhausted(m)) continue;
@@ -631,8 +696,15 @@ async function startServer() {
             return res.json({ text: '' });
           } catch (err: any) {
             const msg = String(err?.message || err || '');
-            console.warn(`Gemini STT error on ${m}:`, msg);
-            if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+            const status = err?.status || err?.code;
+            if (
+              status === 404 ||
+              status === 429 ||
+              msg.includes('404') ||
+              msg.includes('NOT_FOUND') ||
+              msg.includes('429') ||
+              msg.includes('RESOURCE_EXHAUSTED')
+            ) {
               markModelExhausted(m, 30 * 60 * 1000);
             }
           }
