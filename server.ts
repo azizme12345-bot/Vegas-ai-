@@ -197,9 +197,15 @@ async function startServer() {
         if (m.media && Array.isArray(m.media)) {
           for (const item of m.media) {
             if (item.data && item.mimeType) {
-              const cleanData = String(item.data).replace(/^data:[^;]+;base64,/, '');
+              const rawStr = String(item.data);
+              const commaIdx = rawStr.indexOf(',');
+              const cleanData = (
+                commaIdx !== -1 && rawStr.startsWith('data:') ? rawStr.slice(commaIdx + 1) : rawStr
+              ).replace(/\s/g, '');
+              const cleanItemMime =
+                String(item.mimeType).split(';')[0].trim() || 'application/octet-stream';
               parts.push({
-                inlineData: { data: cleanData, mimeType: item.mimeType },
+                inlineData: { data: cleanData, mimeType: cleanItemMime },
               });
             }
           }
@@ -302,12 +308,24 @@ async function startServer() {
         return res.status(400).json({ error: 'Audio data is required' });
       }
 
-      const cleanBase64 = audio.replace(/^data:[^;]+;base64,/, '');
-      const cleanMime = mimeType || 'audio/webm';
+      const commaIdx = audio.indexOf(',');
+      const cleanBase64 = (
+        commaIdx !== -1 && audio.startsWith('data:') ? audio.slice(commaIdx + 1) : audio
+      ).replace(/\s/g, '');
+      const cleanMime = String(mimeType || 'audio/webm').split(';')[0].trim() || 'audio/webm';
 
-      // 1. Primary: Ultra-fast Gemini 3.1 Flash Lite audio transcription (~1.2s)
+      if (!cleanBase64) {
+        return res.status(400).json({ error: 'Invalid audio payload' });
+      }
+
+      // 1. Primary: Ultra-fast Gemini audio transcription (~1.2s)
       if (geminiAi) {
-        const sttModels = ['gemini-3.1-flash-lite', 'gemini-3.1-flash-lite-preview', 'gemini-flash-latest'];
+        const sttModels = [
+          'gemini-3.1-flash-lite',
+          'gemini-3.5-transcribe',
+          'gemini-3.8-flash',
+          'gemini-flash-latest',
+        ];
         for (const m of sttModels) {
           if (isModelExhausted(m)) continue;
           try {

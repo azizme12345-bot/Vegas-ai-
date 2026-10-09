@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="VegasAI" />
+<link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <style>
@@ -1557,213 +1558,95 @@
     renderAttachments();
   });
 
-  /* ---------- Dual-Engine 1-Second Voice Input (Web Speech + AI Audio Transcription) ---------- */
+  /* ---------- Voice input ---------- */
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = null;
   var listening = false;
-  var mediaRecorder = null;
-  var audioStream = null;
-  var audioChunks = [];
-  var silenceTimer = null;
-  var audioCtx = null;
-  var voiceMonitorFrame = null;
-  var browserRecognizedText = "";
   var baseInputBeforeMic = "";
 
-  function setMicUiState(stateMode) {
-    if (stateMode === "listening") {
-      el.micBtn.classList.add("on");
-      el.micBtn.setAttribute("title", "سن رہا ہے… روکنے کے لیے دبائیں / Listening…");
-      el.input.setAttribute("placeholder", "سن رہا ہے... بولیں / Listening...");
-    } else if (stateMode === "transcribing") {
-      el.micBtn.classList.remove("on");
-      el.micBtn.setAttribute("title", "آواز کو تحریر میں بدلا جا رہا ہے...");
-      el.input.setAttribute("placeholder", "آواز کو تحریر میں بدلا جا رہا ہے... / Converting voice...");
-    } else {
-      el.micBtn.classList.remove("on");
-      el.micBtn.setAttribute("title", "Voice input (آواز سے لکھیں)");
-      el.input.setAttribute("placeholder", "Message Vegas AI");
-    }
-  }
-
-  function cleanupMediaStream() {
-    if (voiceMonitorFrame) { cancelAnimationFrame(voiceMonitorFrame); voiceMonitorFrame = null; }
-    if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
-    if (audioCtx) {
-      try { audioCtx.close(); } catch (e) {}
-      audioCtx = null;
-    }
-    if (audioStream) {
-      try { audioStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-      audioStream = null;
-    }
-  }
-
-  function stopVoiceCapture() {
-    listening = false;
-    if (rec) {
-      try { rec.stop(); } catch (e) {}
-    }
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      try { mediaRecorder.stop(); } catch (e) { cleanupMediaStream(); setMicUiState("idle"); }
-    } else {
-      cleanupMediaStream();
-      setMicUiState("idle");
-    }
-  }
-
-  async function startVoiceCapture() {
-    listening = true;
-    browserRecognizedText = "";
-    baseInputBeforeMic = el.input.value ? el.input.value.trim() + " " : "";
-    setMicUiState("listening");
-
-    // Engine 1: Live Browser SpeechRecognition (instant interim words as user speaks)
-    if (Rec) {
-      try {
-        rec = new Rec();
-        rec.lang = "ur-PK";
-        rec.interimResults = true;
-        rec.continuous = true;
-        rec.onresult = function (e) {
-          var t = "";
-          for (var i = 0; i < e.results.length; i++) {
-            t += e.results[i][0].transcript;
-          }
-          if (t && t.trim()) {
-            browserRecognizedText = t.trim();
-            el.input.value = baseInputBeforeMic + browserRecognizedText;
-            autosize();
-          }
-        };
-        rec.onerror = function () {};
-        rec.start();
-      } catch (e) {}
-    }
-
-    // Engine 2: MediaRecorder + Gemini/Whisper 1-second server transcription + Silence Auto-Stop
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        audioStream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        });
-
-        if (!listening) {
-          cleanupMediaStream();
-          return;
-        }
-
-        audioChunks = [];
-        var mimeType = "audio/webm";
-        if (typeof MediaRecorder !== "undefined") {
-          if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) mimeType = "audio/webm;codecs=opus";
-          else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
-          else if (MediaRecorder.isTypeSupported("audio/ogg")) mimeType = "audio/ogg";
-        }
-
-        mediaRecorder = new MediaRecorder(audioStream, { mimeType: mimeType });
-        mediaRecorder.ondataavailable = function (ev) {
-          if (ev.data && ev.data.size > 0) audioChunks.push(ev.data);
-        };
-
-        mediaRecorder.onstop = function () {
-          cleanupMediaStream();
-          // If Browser SpeechRecognition already captured text, we are done in 0ms!
-          if (browserRecognizedText && browserRecognizedText.length > 0) {
-            setMicUiState("idle");
-            el.input.focus();
-            return;
-          }
-
-          if (!audioChunks.length) {
-            setMicUiState("idle");
-            return;
-          }
-
-          var blob = new Blob(audioChunks, { type: mimeType });
-          if (blob.size < 400) {
-            setMicUiState("idle");
-            return;
-          }
-
-          setMicUiState("transcribing");
-          var reader = new FileReader();
-          reader.onloadend = async function () {
-            try {
-              var base64Audio = String(reader.result || "");
-              var res = await fetch(API_TRANSCRIBE_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ audio: base64Audio, mimeType: mimeType.split(";")[0] })
-              });
-              if (res.ok) {
-                var data = await res.json();
-                if (data.text && data.text.trim()) {
-                  el.input.value = baseInputBeforeMic + data.text.trim();
-                  autosize();
-                  el.input.focus();
-                }
-              }
-            } catch (err) {}
-            setMicUiState("idle");
-          };
-          reader.readAsDataURL(blob);
-        };
-
-        mediaRecorder.start(200);
-
-        // Automatic silence detection: once user speaks and pauses for 1.6s, auto-convert!
-        try {
-          var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) {
-            audioCtx = new AudioContextClass();
-            var source = audioCtx.createMediaStreamSource(audioStream);
-            var analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 512;
-            source.connect(analyser);
-            var dataArray = new Uint8Array(analyser.frequencyBinCount);
-            var hasSpoken = false;
-            var lastSpeechTime = Date.now();
-            var startTime = Date.now();
-
-            function checkSilence() {
-              if (!listening) return;
-              analyser.getByteFrequencyData(dataArray);
-              var sum = 0;
-              for (var k = 0; k < dataArray.length; k++) sum += dataArray[k];
-              var avg = sum / dataArray.length;
-
-              if (avg > 14) {
-                hasSpoken = true;
-                lastSpeechTime = Date.now();
-              } else if (hasSpoken && (Date.now() - lastSpeechTime > 1650)) {
-                stopVoiceCapture();
-                return;
-              } else if (!hasSpoken && (Date.now() - startTime > 8000)) {
-                stopVoiceCapture();
-                return;
-              }
-              voiceMonitorFrame = requestAnimationFrame(checkSilence);
-            }
-            voiceMonitorFrame = requestAnimationFrame(checkSilence);
-          }
-        } catch (e) {}
-      } catch (err) {
-        if (!Rec) {
-          listening = false;
-          setMicUiState("idle");
-        }
+  function showVoiceError(msg) {
+    el.input.setAttribute("placeholder", msg);
+    el.micBtn.setAttribute("title", msg);
+    var toast = document.getElementById("voiceErrorToast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "voiceErrorToast";
+      toast.dir = "rtl";
+      toast.style.cssText = "max-width:740px;margin:0 auto 8px;padding:8px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-size:13.5px;text-align:right;";
+      if (el.composer && el.composer.firstElementChild) {
+        el.composer.firstElementChild.insertBefore(toast, el.composer.firstElementChild.firstChild);
       }
     }
+    toast.textContent = msg;
+    toast.hidden = false;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function () {
+      toast.hidden = true;
+      el.input.setAttribute("placeholder", "Message Vegas AI");
+      if (Rec) el.micBtn.setAttribute("title", "آواز سے لکھیں");
+    }, 4500);
   }
 
-  el.micBtn.addEventListener("click", function () {
-    if (listening) {
-      stopVoiceCapture();
-    } else {
-      startVoiceCapture();
-    }
-  });
+  if (!Rec) {
+    el.micBtn.disabled = true;
+    el.micBtn.style.opacity = "0.35";
+    el.micBtn.setAttribute("title", "آپ کا براؤزر آواز سے لکھنے کی سہولت سپورٹ نہیں کرتا۔ براہ کرم Chrome یا Edge استعمال کریں۔");
+  } else {
+    rec = new Rec();
+    rec.lang = "ur-PK";
+    rec.interimResults = true;
+    rec.continuous = false;
+
+    rec.onstart = function () {
+      listening = true;
+      el.micBtn.classList.add("on");
+      el.micBtn.setAttribute("title", "سن رہا ہے… روکنے کے لیے کلک کریں");
+      el.input.setAttribute("placeholder", "سن رہا ہے... بولیں");
+    };
+
+    rec.onresult = function (e) {
+      var transcript = "";
+      for (var i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      if (transcript) {
+        el.input.value = baseInputBeforeMic + transcript.trim();
+        autosize();
+        el.input.focus();
+      }
+    };
+
+    rec.onerror = function (e) {
+      listening = false;
+      el.micBtn.classList.remove("on");
+      var errCode = e && e.error ? e.error : "";
+      if (errCode === "not-allowed" || errCode === "service-not-allowed") {
+        showVoiceError("مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔");
+      } else if (errCode === "no-speech") {
+        showVoiceError("کوئی آواز سنائی نہیں دی۔ براہ کرم دوبارہ بولنے کی کوشش کریں۔");
+      } else if (errCode === "network") {
+        showVoiceError("نیٹ ورک کی خرابی کی وجہ سے آواز شناخت نہیں ہو سکی۔ اپنا انٹرنیٹ چیک کریں۔");
+      } else if (errCode !== "aborted") {
+        showVoiceError("آواز شناخت کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔");
+      }
+    };
+
+    rec.onend = function () {
+      listening = false;
+      el.micBtn.classList.remove("on");
+      el.micBtn.setAttribute("title", "آواز سے لکھیں");
+      el.input.setAttribute("placeholder", "Message Vegas AI");
+    };
+
+    el.micBtn.addEventListener("click", function () {
+      if (listening) {
+        try { rec.stop(); } catch (e) {}
+      } else {
+        baseInputBeforeMic = el.input.value ? el.input.value.trim() + " " : "";
+        try { rec.start(); } catch (e) {}
+      }
+    });
+  }
 
   /* ---------- Main events ---------- */
   el.composer.addEventListener("submit", function (e) { e.preventDefault(); send(); });
@@ -1855,6 +1738,13 @@
   render();
   autosize();
 })();
+</script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {});
+    });
+  }
 </script>
 </body>
 </html>
