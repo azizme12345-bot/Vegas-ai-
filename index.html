@@ -382,7 +382,7 @@
       <div class="composer-inner">
         <div class="pill">
           <div class="attach-wrap" id="attachWrap">
-            <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach">
+            <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach & Tools">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
             <div class="attach-menu" id="attachMenu" role="menu">
@@ -392,16 +392,24 @@
               </button>
               <button type="button" class="attach-menu-item" id="menuFilesBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <span>Files (فائلز)</span>
+                <span>Files & PDF (فائلز)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuGalleryBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 <span>Gallery (گیلری)</span>
               </button>
+              <button type="button" class="attach-menu-item" id="menuImgGenBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+                <span>Generate Image (تصویر بنائیں)</span>
+              </button>
+              <button type="button" class="attach-menu-item" id="menuPromptBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>AI Tools (سمارٹ ٹولز)</span>
+              </button>
             </div>
           </div>
           <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" hidden>
-          <input type="file" id="fileInput" accept="*/*" multiple hidden>
+          <input type="file" id="fileInput" accept="*/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.ts,.py" multiple hidden>
           <input type="file" id="galleryInput" accept="image/*,video/*" multiple hidden>
           <textarea id="input" rows="1" placeholder="Message Vegas AI" aria-label="Message"></textarea>
           <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input (آواز سے لکھیں)">
@@ -415,6 +423,35 @@
       </div>
     </form>
   </main>
+
+  <!-- Live Code Preview Modal -->
+  <div class="modal-wrap" id="previewModal" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+    <div class="modal" style="max-width: 820px; height: 82dvh;">
+      <div class="modal-head">
+        <h2 id="previewTitle">Live Code Preview</h2>
+        <button class="icon-btn" id="closePreview" aria-label="Close preview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <iframe id="previewFrame" sandbox="allow-scripts" style="flex:1;width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;"></iframe>
+    </div>
+  </div>
+
+  <!-- Security PIN Lock Modal -->
+  <div class="modal-wrap" id="lockModal" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+    <div class="modal" style="max-width: 340px;">
+      <div class="modal-head">
+        <h2 id="lockTitle">Locked (پن کوڈ درج کریں)</h2>
+      </div>
+      <div class="field">
+        <label for="unlockPinInput">Enter PIN to access conversations</label>
+        <input type="password" id="unlockPinInput" maxlength="12" placeholder="••••" style="background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%;text-align:center;font-size:18px;letter-spacing:4px;">
+      </div>
+      <div class="row-inline" style="justify-content:flex-end;">
+        <button type="button" class="photo-btn" id="unlockBtn">Unlock</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Settings panel -->
   <div class="modal-wrap" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -449,8 +486,77 @@
       </div>
 
       <div class="field">
-        <span class="lbl">Chats</span>
-        <div><button type="button" class="danger-btn" id="clearAll">Delete all chats</button></div>
+        <span class="lbl">AI Speed & Mode (ماڈل موڈ)</span>
+        <div class="seg" style="grid-template-columns: 1fr 1fr 1fr;" role="group" aria-label="AI Mode">
+          <button type="button" data-mode-set="fast" aria-pressed="true">Fast</button>
+          <button type="button" data-mode-set="balanced" aria-pressed="false">Balanced</button>
+          <button type="button" data-mode-set="deep" aria-pressed="false">Deep</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Response Length (جواب کی طوالت)</span>
+        <div class="seg" style="grid-template-columns: 1fr 1fr 1fr;" role="group" aria-label="Response Length">
+          <button type="button" data-len-set="short" aria-pressed="false">Short</button>
+          <button type="button" data-len-set="balanced" aria-pressed="true">Balanced</button>
+          <button type="button" data-len-set="detailed" aria-pressed="false">Detailed</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="customInstInput">Custom AI Instructions (خصوصی ہدایات)</label>
+        <input type="text" id="customInstInput" maxlength="500" placeholder="e.g. Always explain step-by-step in Urdu & English...">
+      </div>
+
+      <div class="field">
+        <label for="quickToolSelect">All-in-One AI Assistant Tools</label>
+        <select id="quickToolSelect">
+          <option value="">Select a quick AI tool...</option>
+          <option value="translate">Multilingual Translation (ترجمہ کریں)</option>
+          <option value="summarize">Summarization (خلاصہ لکھیں)</option>
+          <option value="grammar">Grammar & Spelling Check (گرامر درست کریں)</option>
+          <option value="rewrite">Text Rewriting & Improvement (بہتر بنائیں)</option>
+          <option value="essay">Essay & Article Writing (مضمون لکھیں)</option>
+          <option value="math">Math & Step-by-Step Solver (ریاضی حل کریں)</option>
+          <option value="code">Code & Website Generator (ویب سائٹ/کوڈ بنائیں)</option>
+          <option value="debug">Code & Vercel Error Fixer (ایررز ٹھیک کریں)</option>
+          <option value="github">GitHub / URL / YouTube Analyzer (لنک تجزیہ)</option>
+          <option value="prompt">AI Prompt Generator (پرامپٹ بنائیں)</option>
+          <option value="learn">AI Learning Tutor (سیکھنے میں مدد)</option>
+          <option value="image">Image Generation (تصویر بنائیں)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Usage & Token Tracking</span>
+        <div id="usageStatsText" style="font-size:13px;color:var(--muted);background:var(--surface);padding:8px 12px;border-radius:10px;border:1px solid var(--line);">
+          Messages: 0 | Est. Tokens: 0 | Status: Active
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Privacy, Export & Security</span>
+        <div class="row-inline" style="flex-wrap:wrap;gap:8px;">
+          <button type="button" class="photo-btn" id="exportChatBtn">Export Chat (.txt)</button>
+          <button type="button" class="photo-btn" id="exportAllBtn">Export All (.json)</button>
+          <button type="button" class="photo-btn" id="privacyToggleBtn">Save History: ON</button>
+          <button type="button" class="photo-btn" id="pinLockBtn">Set PIN Lock</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Keyboard Shortcuts</span>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6;">
+          Enter: Send &bull; Shift+Enter: New Line &bull; Ctrl+Z / Ctrl+Shift+Z: Undo/Redo &bull; Ctrl+K: New Chat &bull; Esc: Stop AI / Close
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">Feedback & Chats</span>
+        <div class="row-inline" style="flex-wrap:wrap;gap:8px;">
+          <button type="button" class="photo-btn" id="feedbackBtn">Send Feedback / Report</button>
+          <button type="button" class="danger-btn" id="clearAll">Delete all chats</button>
+        </div>
       </div>
     </div>
   </div>
@@ -461,16 +567,30 @@
   var KEY = "vegas-ai-chats";
   var THEME_KEY = "vegas-ai-theme";
   var PROFILE_KEY = "vegas-ai-profile";
+  var PREFS_KEY = "vegas-ai-prefs";
 
   var API_CHAT_URL = "/api/chat";
   var API_IMAGE_URL = "/api/image";
   var API_TTS_URL = "/api/tts";
   var API_TRANSCRIBE_URL = "/api/transcribe";
 
-  var state = { chats: [], currentId: null, profile: { name: "User", photo: "" } };
+  var state = {
+    chats: [],
+    currentId: null,
+    profile: { name: "User", photo: "" },
+    prefs: {
+      aiMode: "fast",
+      responseLength: "balanced",
+      customInstructions: "",
+      saveHistory: true,
+      pinCode: "",
+      totalRequests: 0
+    }
+  };
   var undoStack = [], redoStack = [];
   var pending = [];
   var busy = false;
+  var activeAbortController = null;
   var currentSpeakingIndex = null;
   var currentAudio = null;
   var sharedAudio = new Audio();
@@ -484,14 +604,19 @@
     composer: $("composer"), input: $("input"), sendBtn: $("sendBtn"),
     attachWrap: $("attachWrap"), attachBtn: $("attachBtn"), attachMenu: $("attachMenu"),
     menuCameraBtn: $("menuCameraBtn"), menuFilesBtn: $("menuFilesBtn"), menuGalleryBtn: $("menuGalleryBtn"),
+    menuImgGenBtn: $("menuImgGenBtn"), menuPromptBtn: $("menuPromptBtn"),
     cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
     attachments: $("attachments"),
     micBtn: $("micBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
     settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
-    nameInput: $("nameInput"), clearAll: $("clearAll"),
-    installPwaBtn: $("installPwaBtn")
+    nameInput: $("nameInput"), customInstInput: $("customInstInput"), quickToolSelect: $("quickToolSelect"),
+    usageStatsText: $("usageStatsText"), exportChatBtn: $("exportChatBtn"), exportAllBtn: $("exportAllBtn"),
+    privacyToggleBtn: $("privacyToggleBtn"), pinLockBtn: $("pinLockBtn"), feedbackBtn: $("feedbackBtn"),
+    clearAll: $("clearAll"), installPwaBtn: $("installPwaBtn"),
+    previewModal: $("previewModal"), closePreview: $("closePreview"), previewFrame: $("previewFrame"),
+    lockModal: $("lockModal"), unlockPinInput: $("unlockPinInput"), unlockBtn: $("unlockBtn")
   };
 
   /* ---------- Storage ---------- */
@@ -504,9 +629,18 @@
       var p = localStorage.getItem(PROFILE_KEY);
       if (p) state.profile = Object.assign({ name: "User", photo: "" }, JSON.parse(p));
     } catch (e) {}
+    try {
+      var pr = localStorage.getItem(PREFS_KEY);
+      if (pr) state.prefs = Object.assign(state.prefs, JSON.parse(pr));
+    } catch (e) {}
+  }
+
+  function savePrefs() {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(state.prefs)); } catch (e) {}
   }
 
   function saveChats() {
+    if (!state.prefs.saveHistory) return;
     try {
       var clean = state.chats.map(function (c) {
         return {
@@ -517,7 +651,7 @@
               text: m.text,
               failed: !!m.failed,
               media: (m.media || []).map(function (x) {
-                return { type: x.type, name: x.name, url: x.url, mimeType: x.mimeType, data: x.data };
+                return { type: x.type, name: x.name, url: x.url, mimeType: x.mimeType, data: x.data, textContent: x.textContent };
               })
             };
           })
@@ -623,12 +757,6 @@
     } catch (e) {}
   }
 
-  function extractCode(text) {
-    var m = String(text).match(/```([a-zA-Z0-9+#-]*)\n?([\s\S]*?)```/);
-    if (!m) return null;
-    return { lang: (m[1] || "").toLowerCase(), code: m[2].replace(/\n$/, "") };
-  }
-
   function updateSpeakerBtn(btn, isPlaying) {
     if (!btn) return;
     btn.innerHTML = isPlaying ? icons.speakerStop : icons.speaker;
@@ -655,7 +783,6 @@
     }
   }
 
-  // Preload browser speechSynthesis voices asynchronously
   var availableVoices = [];
   function loadBrowserVoices() {
     if ("speechSynthesis" in window) {
@@ -677,7 +804,6 @@
       .trim();
   }
 
-  // Pre-fetch TTS audio in background as soon as AI response finishes so clicking Listen is 0ms instant
   function prefetchTts(text) {
     var cleanText = cleanTextForSpeech(text);
     if (!cleanText || clientTtsCache[cleanText]) return;
@@ -758,7 +884,6 @@
       return;
     }
 
-    // Play immediately if already in client cache
     if (clientTtsCache[cleanText]) {
       try {
         sharedAudio.src = clientTtsCache[cleanText];
@@ -770,21 +895,19 @@
       } catch (e) {}
     }
 
-    // Synchronously unlock sharedAudio on user click gesture so async play is never blocked by browser autoplay policy
     try {
       sharedAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
       var unlockPromise = sharedAudio.play();
       if (unlockPromise && typeof unlockPromise.catch === "function") unlockPromise.catch(function () {});
     } catch (e) {}
 
-    // Fetch natural female voice from /api/tts (~250ms)
     try {
       var res = await fetch(API_TTS_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: cleanText })
       });
-      if (currentSpeakingIndex !== index) return; // User stopped while fetching
+      if (currentSpeakingIndex !== index) return;
       if (res.ok) {
         var data = await res.json();
         if (data.audio && currentSpeakingIndex === index) {
@@ -814,15 +937,46 @@
     speaker: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
     speakerStop: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>',
     download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
-    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>'
+    delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+    regen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
+    sendArrow: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+    stopSquare: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
   };
 
-  /* ---------- Markdown Parser with Language Support ---------- */
+  function updateSendStopBtn() {
+    if (!el.sendBtn) return;
+    if (busy) {
+      el.sendBtn.innerHTML = icons.stopSquare;
+      el.sendBtn.setAttribute("title", "Stop AI Generation (روکیں)");
+      el.sendBtn.setAttribute("aria-label", "Stop");
+    } else {
+      el.sendBtn.innerHTML = icons.sendArrow;
+      el.sendBtn.setAttribute("title", "Send");
+      el.sendBtn.setAttribute("aria-label", "Send");
+    }
+  }
+
+  /* ---------- Markdown Parser with Language Support & Live Preview ---------- */
   function inlineFormat(str) {
     str = str.replace(/(\*\*|__)(.*?)\1/g, '<strong style="font-weight:600;">$2</strong>');
     str = str.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
     str = str.replace(/`([^`]+)`/g, '<code dir="ltr" style="background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px;direction:ltr;unicode-bidi:isolate;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">$1</code>');
     return str;
+  }
+
+  function buildCodeBlockHtml(cb) {
+    var lang = cb.lang || "code";
+    var isPreviewable = ["html", "htm", "svg", "xml", "javascript", "js", "css"].indexOf(lang) !== -1 || /<!doctype html|<html|<div|<style|<script|<svg/i.test(cb.code);
+    var previewBtn = isPreviewable
+      ? '<button type="button" class="code-copy" data-action="preview-code" data-lang="' + escapeHtml(lang) + '">Preview</button>'
+      : '';
+    return '<pre><div class="code-head"><span class="code-lang">' + escapeHtml(lang) + '</span><div class="code-btns">' +
+           previewBtn +
+           '<button type="button" class="code-copy" data-action="copy-code">Copy</button>' +
+           '<button type="button" class="code-copy" data-action="download-code" data-lang="' + escapeHtml(cb.lang || '') + '">Save file</button></div></div><code>' +
+           escapeHtml(cb.code) + '</code></pre>';
   }
 
   function renderBody(text, isUrdu) {
@@ -851,8 +1005,7 @@
         if (inList) { html += "</" + inList + ">"; inList = null; }
         if (inTable) { html += "</tbody></table></div>"; inTable = false; }
         var cb = codeBlocks[Number(codeMatch[1])];
-        html += '<pre><div class="code-head"><span class="code-lang">' + escapeHtml(cb.lang || 'code') + '</span><div class="code-btns"><button type="button" class="code-copy" data-action="copy-code">Copy</button><button type="button" class="code-copy" data-action="download-code" data-lang="' + escapeHtml(cb.lang || '') + '">Save file</button></div></div><code>' +
-                escapeHtml(cb.code) + '</code></pre>';
+        html += buildCodeBlockHtml(cb);
         continue;
       }
 
@@ -949,15 +1102,13 @@
     if (inTable) html += "</tbody></table></div>";
 
     html = html.replace(/___CODE_BLOCK_(\d+)___/g, function (match, idx) {
-      var cb = codeBlocks[Number(idx)];
-      return '<pre><div class="code-head"><span class="code-lang">' + escapeHtml(cb.lang || 'code') + '</span><div class="code-btns"><button type="button" class="code-copy" data-action="copy-code">Copy</button><button type="button" class="code-copy" data-action="download-code" data-lang="' + escapeHtml(cb.lang || '') + '">Save file</button></div></div><code>' +
-              escapeHtml(cb.code) + '</code></pre>';
+      return buildCodeBlockHtml(codeBlocks[Number(idx)]);
     });
 
     return html;
   }
 
-  /* ---------- Message DOM Construction (Speed Optimized & Task 2/3 Compliant) ---------- */
+  /* ---------- Message DOM Construction ---------- */
   function createMessageElement(m, idx) {
     var isUrdu = hasUrdu(m.text);
     var bubbleClass = "bubble";
@@ -972,14 +1123,13 @@
 
     var actionsBlock = "";
     if (m.role === "user") {
-      // User messages: ONLY Copy and Delete icons (no Listen, no Download)
       actionsBlock =
         '<div class="msg-actions">' +
         '<button type="button" class="msg-action-btn" data-action="copy-msg" title="کاپی / Copy" aria-label="Copy">' + icons.copy + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="edit-msg" title="ترمیم / Edit" aria-label="Edit">' + icons.edit + '</button>' +
         '<button type="button" class="msg-action-btn" data-action="delete-msg" title="ڈیلیٹ / Delete" aria-label="Delete">' + icons.delete + '</button>' +
         '</div>';
     } else if (m.role === "assistant") {
-      // AI assistant responses: Copy, Listen (speaker), Download, Delete icons (no text)
       var isPlaying = currentSpeakingIndex === idx;
       var speakerIcon = isPlaying ? icons.speakerStop : icons.speaker;
       var speakerTitle = isPlaying ? "روکیں / Stop" : "سنیں / Listen";
@@ -990,6 +1140,8 @@
         '<button type="button" class="msg-action-btn" data-action="copy-msg" title="کاپی / Copy" aria-label="Copy">' + icons.copy + '</button>' +
         '<button type="button" class="' + speakerClass + '" data-action="listen-msg" title="' + speakerTitle + '" aria-label="Listen">' + speakerIcon + '</button>' +
         '<button type="button" class="msg-action-btn" data-action="download-msg" title="ڈاؤن لوڈ / Download" aria-label="Download">' + icons.download + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="share-msg" title="شیئر / Share" aria-label="Share">' + icons.share + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="regen-msg" title="دوبارہ جواب / Regenerate" aria-label="Regenerate">' + icons.regen + '</button>' +
         '<button type="button" class="msg-action-btn" data-action="delete-msg" title="ڈیلیٹ / Delete" aria-label="Delete">' + icons.delete + '</button>' +
         '</div>';
     }
@@ -1004,7 +1156,7 @@
     return div;
   }
 
-  /* ---------- Full Render (Only on Chat Switch / Initial Load) ---------- */
+  /* ---------- Full Render ---------- */
   function render() {
     var c = current();
     var hasMessages = !!(c && c.messages && c.messages.length);
@@ -1029,10 +1181,27 @@
 
     el.thread.scrollTop = el.thread.scrollHeight;
 
+    updateSendStopBtn();
     renderHistory();
     renderAttachments();
     updateUndoButtons();
     renderProfile();
+    updateUsageStats();
+  }
+
+  function updateUsageStats() {
+    if (!el.usageStatsText) return;
+    var totalMsgs = 0;
+    var totalChars = 0;
+    state.chats.forEach(function (c) {
+      (c.messages || []).forEach(function (m) {
+        totalMsgs++;
+        totalChars += String(m.text || "").length;
+      });
+    });
+    var estTokens = Math.round(totalChars / 3.8);
+    el.usageStatsText.textContent =
+      "Messages: " + totalMsgs + " | Est. Tokens: ~" + estTokens + " | Mode: " + (state.prefs.aiMode || "fast").toUpperCase();
   }
 
   function renderHistory() {
@@ -1125,6 +1294,10 @@
 
   /* ---------- Chat actions ---------- */
   function newChat() {
+    if (busy && activeAbortController) {
+      try { activeAbortController.abort(); } catch (e) {}
+      busy = false;
+    }
     state.currentId = null;
     undoStack = []; redoStack = []; pending = [];
     el.input.value = ""; autosize();
@@ -1168,13 +1341,41 @@
     saveChats(); render();
   }
 
-  /* ---------- Dual AI Calls (Immediate, Fast, No Delay) ---------- */
-  function isImagePrompt(text) {
-    if (!text) return false;
-    var lower = text.toLowerCase().trim();
-    return /تصویر بنا|عکس بنا|تصویر کیجیے|تصویر بناؤ|تصویر بنائیں|generate image|create image|draw a|make an image|picture of|draw an image/i.test(lower);
+  function editMessage(index) {
+    var c = current();
+    if (!c || !c.messages || !c.messages[index]) return;
+    var m = c.messages[index];
+    if (m.role !== "user") return;
+    snapshot();
+    el.input.value = m.text || "";
+    pending = (m.media || []).slice();
+    c.messages.splice(index);
+    saveChats();
+    render();
+    autosize();
+    el.input.focus();
   }
 
+  function regenerateMessage(index) {
+    if (busy) return;
+    var c = current();
+    if (!c || !c.messages || !c.messages[index]) return;
+    snapshot();
+    if (c.messages[index].role === "assistant") {
+      c.messages.splice(index, 1);
+    }
+    saveChats();
+    render();
+    triggerAiReplyForCurrentChat();
+  }
+
+  function stopAiGeneration() {
+    if (busy && activeAbortController) {
+      try { activeAbortController.abort(); } catch (e) {}
+    }
+  }
+
+  /* ---------- AI Calls (Multi-Turn, Multimodal, Stop-Capable) ---------- */
   async function triggerAiReplyForCurrentChat() {
     var c = current();
     if (!c || !c.messages || !c.messages.length) return;
@@ -1190,6 +1391,7 @@
 
     var text = lastUserMsg.text || "";
     busy = true;
+    updateSendStopBtn();
 
     var oldTyp = $("activeTypingIndicator");
     if (oldTyp) oldTyp.remove();
@@ -1202,27 +1404,45 @@
     el.messages.appendChild(typIndicator);
     el.thread.scrollTop = el.thread.scrollHeight;
 
+    activeAbortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+
     try {
-      var res = await fetch("/api/chat", {
+      var res = await fetch(API_CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text })
+        signal: activeAbortController ? activeAbortController.signal : undefined,
+        body: JSON.stringify({
+          message: text,
+          messages: c.messages,
+          customInstructions: state.prefs.customInstructions || "",
+          responseLength: state.prefs.responseLength || "balanced",
+          aiMode: state.prefs.aiMode || "fast"
+        })
       });
       var data = await res.json();
       if (typIndicator.parentNode) typIndicator.remove();
 
       var assistantMsg = { role: "assistant", text: "", media: [] };
+      if (data.imageUrl) {
+        assistantMsg.media.push({
+          type: "image",
+          name: "generated-image.png",
+          url: data.imageUrl
+        });
+      }
       if (data.error) {
         assistantMsg.text = data.error;
         assistantMsg.failed = true;
       } else if (data.reply) {
         assistantMsg.text = data.reply;
-      } else {
+      } else if (!data.imageUrl) {
         assistantMsg.text = "معذرت، کوئی جواب موصول نہیں ہوا۔";
         assistantMsg.failed = true;
       }
 
       c.messages.push(assistantMsg);
+      state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
+      savePrefs();
       el.messages.appendChild(createMessageElement(assistantMsg, c.messages.length - 1));
       el.thread.scrollTop = el.thread.scrollHeight;
 
@@ -1231,28 +1451,44 @@
       }
     } catch (err) {
       if (typIndicator.parentNode) typIndicator.remove();
-      var netErrMsg = {
-        role: "assistant",
-        text: "معذرت، رابطہ قائم نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
-        failed: true,
-        media: []
-      };
-      c.messages.push(netErrMsg);
-      el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
+      if (err && err.name === "AbortError") {
+        var stoppedMsg = {
+          role: "assistant",
+          text: "جواب روک دیا گیا۔ (Generation stopped)",
+          failed: false,
+          media: []
+        };
+        c.messages.push(stoppedMsg);
+        el.messages.appendChild(createMessageElement(stoppedMsg, c.messages.length - 1));
+      } else {
+        var netErrMsg = {
+          role: "assistant",
+          text: "معذرت، رابطہ قائم نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+          failed: true,
+          media: []
+        };
+        c.messages.push(netErrMsg);
+        el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
+      }
     }
 
     busy = false;
+    activeAbortController = null;
+    updateSendStopBtn();
     saveChats();
     renderHistory();
+    updateUsageStats();
   }
 
-  /* ---------- Send User Message (Immediate, No Delays) ---------- */
+  /* ---------- Send User Message ---------- */
   async function send() {
-    if (busy) return;
+    if (busy) {
+      stopAiGeneration();
+      return;
+    }
     var text = el.input.value.trim();
     if (!text && !pending.length) return;
 
-    // Default smart analysis prompt when user sends a video or photo without typing text
     if (!text && pending.length > 0) {
       var hasVid = pending.some(function (p) { return p.type === "video"; });
       var hasImg = pending.some(function (p) { return p.type === "image"; });
@@ -1261,13 +1497,13 @@
       } else if (hasImg) {
         text = "اس تصویر کو غور سے دیکھ کر اینالائز کریں، اگر اس میں کوئی مسئلہ نظر آ رہا ہے تو اس کی نشاندہی کریں اور اسے حل کرنے کی تجاویز دیں۔";
       } else {
-        text = "اس فائل کا تجزیہ کریں اور مکمل تفصیل بتائیں۔";
+        text = "اس فائل/دستاویز کا مکمل تجزیہ کریں اور اہم نکات بتائیں۔";
       }
     }
 
     var c = current();
     if (!c) {
-      c = { id: uid(), title: (text || "Photo or video").slice(0, 40), pinned: false, messages: [] };
+      c = { id: uid(), title: (text || "Attachment").slice(0, 40), pinned: false, messages: [] };
       state.chats.push(c);
       state.currentId = c.id;
       undoStack = []; redoStack = [];
@@ -1317,10 +1553,28 @@
     });
   }
 
-  /* ---------- Settings ---------- */
+  /* ---------- Settings & All-in-One Controls ---------- */
+  function syncSettingsUI() {
+    document.querySelectorAll("[data-mode-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-mode-set") === (state.prefs.aiMode || "fast")));
+    });
+    document.querySelectorAll("[data-len-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-len-set") === (state.prefs.responseLength || "balanced")));
+    });
+    if (el.customInstInput) el.customInstInput.value = state.prefs.customInstructions || "";
+    if (el.privacyToggleBtn) {
+      el.privacyToggleBtn.textContent = state.prefs.saveHistory ? "Save History: ON" : "Incognito (Don't Save): ON";
+    }
+    if (el.pinLockBtn) {
+      el.pinLockBtn.textContent = state.prefs.pinCode ? "Change / Clear PIN" : "Set PIN Lock";
+    }
+    updateUsageStats();
+  }
+
   function openSettings() {
     el.nameInput.value = state.profile.name || "";
     applyTheme(currentThemeSetting());
+    syncSettingsUI();
     closeMenu();
     el.settingsModal.classList.add("show");
     renderProfile();
@@ -1336,6 +1590,104 @@
     state.profile.name = el.nameInput.value.trim() || "User";
     saveProfile(); renderProfile();
   });
+  if (el.customInstInput) {
+    el.customInstInput.addEventListener("input", function () {
+      state.prefs.customInstructions = el.customInstInput.value;
+      savePrefs();
+    });
+  }
+  document.querySelectorAll("[data-mode-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.prefs.aiMode = b.getAttribute("data-mode-set") || "fast";
+      savePrefs();
+      syncSettingsUI();
+    });
+  });
+  document.querySelectorAll("[data-len-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      state.prefs.responseLength = b.getAttribute("data-len-set") || "balanced";
+      savePrefs();
+      syncSettingsUI();
+    });
+  });
+
+  if (el.quickToolSelect) {
+    el.quickToolSelect.addEventListener("change", function () {
+      var val = el.quickToolSelect.value;
+      if (!val) return;
+      var templates = {
+        translate: "درج ذیل متن کا اردو اور انگریزی میں صاف ترجمہ کریں:\n",
+        summarize: "درج ذیل مضمون یا متن کا اہم نکات میں مختصر خلاصہ (Summary) لکھیں:\n",
+        grammar: "درج ذیل جملوں کی گرامر اور املا (Grammar & Spelling) درست کر کے بہتر بنائیں:\n",
+        rewrite: "درج ذیل تحریر کو پیشہ ورانہ اور دلکش انداز میں دوبارہ لکھیں (Rewrite):\n",
+        essay: "اس موضوع پر مکمل اور جامع مضمون (Essay / Article) لکھیں:\n",
+        math: "اس ریاضی کے سوال کو مرحلہ وار (Step-by-step) حل کریں:\n",
+        code: "مکمل HTML، CSS اور JavaScript میں ایک جدید اور ریسپانسو کوڈ بنائیں برائے:\n",
+        debug: "اس کوڈ یا Vercel ڈپلائمنٹ ایرر کا تجزیہ کریں اور اس کا درست حل بتائیں:\n",
+        github: "اس لنک (GitHub Repo / YouTube / Website URL) کا مکمل تجزیہ کریں:\n",
+        prompt: "اس خیال کے لیے ایک بہترین اور تفصیلی AI Prompt تیار کریں:\n",
+        learn: "مجھے ایک استاد کی طرح آسان الفاظ اور مثالوں سے یہ موضوع سمجھائیں:\n",
+        image: "/image ایک خوبصورت اور حقیقت پسندانہ منظر جس میں "
+      };
+      el.input.value = templates[val] || "";
+      el.quickToolSelect.value = "";
+      closeSettings();
+      autosize();
+      el.input.focus();
+    });
+  }
+
+  if (el.exportChatBtn) {
+    el.exportChatBtn.addEventListener("click", function () {
+      var c = current();
+      if (!c || !c.messages || !c.messages.length) {
+        showVoiceError("ایکسپورٹ کرنے کے لیے پہلے کوئی بات چیت کھولیں۔");
+        closeSettings();
+        return;
+      }
+      var txt = "=== " + (c.title || "Vegas AI Chat") + " ===\n\n" +
+        c.messages.map(function (m) {
+          return (m.role === "user" ? "User: " : "Vegas AI: ") + (m.text || "");
+        }).join("\n\n-------------------\n\n");
+      downloadText((c.title || "conversation").slice(0, 25) + ".txt", txt, "text/plain");
+    });
+  }
+
+  if (el.exportAllBtn) {
+    el.exportAllBtn.addEventListener("click", function () {
+      downloadText("vegas-ai-all-chats.json", JSON.stringify(state.chats, null, 2), "application/json");
+    });
+  }
+
+  if (el.privacyToggleBtn) {
+    el.privacyToggleBtn.addEventListener("click", function () {
+      state.prefs.saveHistory = !state.prefs.saveHistory;
+      savePrefs();
+      syncSettingsUI();
+    });
+  }
+
+  if (el.pinLockBtn) {
+    el.pinLockBtn.addEventListener("click", function () {
+      var p = prompt("اپنی چیٹ محفوظ کرنے کے لیے نیا PIN کوڈ درج کریں (ختم کرنے کے لیے خالی چھوڑ دیں):", state.prefs.pinCode || "");
+      if (p !== null) {
+        state.prefs.pinCode = p.trim();
+        savePrefs();
+        syncSettingsUI();
+      }
+    });
+  }
+
+  if (el.feedbackBtn) {
+    el.feedbackBtn.addEventListener("click", function () {
+      var fb = prompt("اپنا فیڈ بیک یا مسئلہ یہاں لکھیں (Feedback / Report a Problem):");
+      if (fb && fb.trim()) {
+        closeSettings();
+        showVoiceError("شکریہ! آپ کا فیڈ بیک محفوظ کر لیا گیا ہے۔");
+      }
+    });
+  }
+
   el.photoBtn.addEventListener("click", function () { el.photoInput.click(); });
   el.photoInput.addEventListener("change", function () {
     var f = el.photoInput.files && el.photoInput.files[0];
@@ -1354,15 +1706,66 @@
   el.clearAll.addEventListener("click", function () {
     state.chats = []; state.currentId = null;
     undoStack = []; redoStack = [];
-    saveChats(); render();
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    render();
+    closeSettings();
   });
 
-  /* ---------- Attachments ---------- */
+  /* ---------- Live Code Preview Modal ---------- */
+  function openCodePreview(code) {
+    if (!el.previewModal || !el.previewFrame) return;
+    el.previewFrame.srcdoc = code;
+    el.previewModal.classList.add("show");
+  }
+  if (el.closePreview) {
+    el.closePreview.addEventListener("click", function () {
+      el.previewModal.classList.remove("show");
+      if (el.previewFrame) el.previewFrame.srcdoc = "";
+    });
+  }
+  if (el.previewModal) {
+    el.previewModal.addEventListener("click", function (e) {
+      if (e.target === el.previewModal) {
+        el.previewModal.classList.remove("show");
+        if (el.previewFrame) el.previewFrame.srcdoc = "";
+      }
+    });
+  }
+
+  /* ---------- PIN Lock Check on Startup ---------- */
+  function checkPinLock() {
+    if (state.prefs.pinCode && el.lockModal) {
+      el.lockModal.classList.add("show");
+      if (el.unlockPinInput) {
+        el.unlockPinInput.value = "";
+        setTimeout(function () { el.unlockPinInput.focus(); }, 100);
+      }
+    }
+  }
+  function attemptUnlock() {
+    if (!el.unlockPinInput) return;
+    if (el.unlockPinInput.value.trim() === state.prefs.pinCode) {
+      el.lockModal.classList.remove("show");
+      el.unlockPinInput.value = "";
+    } else {
+      el.unlockPinInput.value = "";
+      el.unlockPinInput.setAttribute("placeholder", "غلط پن! دوبارہ کوشش کریں");
+    }
+  }
+  if (el.unlockBtn) el.unlockBtn.addEventListener("click", attemptUnlock);
+  if (el.unlockPinInput) {
+    el.unlockPinInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); attemptUnlock(); }
+    });
+  }
+
+  /* ---------- Attachments (Images, Video, PDF, Code & Documents) ---------- */
   function processAttachment(f) {
     if (!f) return;
     var isImg = f.type.indexOf("image") === 0;
     var isVid = f.type.indexOf("video") === 0;
-    var type = isVid ? "video" : (isImg ? "image" : "file");
+    var ext = (f.name || "").split(".").pop().toLowerCase();
+    var isPdf = f.type === "application/pdf" || ext === "pdf";
     var url = "";
     try { url = URL.createObjectURL(f); } catch (e) {}
 
@@ -1449,9 +1852,21 @@
         r.readAsDataURL(f);
       }
       video.onerror = fallbackVid;
+    } else if (isPdf) {
+      var pdfReader = new FileReader();
+      pdfReader.onload = function (evt) {
+        pending.push({
+          type: "file",
+          name: f.name || "document.pdf",
+          url: url,
+          mimeType: "application/pdf",
+          data: String(evt.target.result).split(",")[1]
+        });
+        renderAttachments();
+      };
+      pdfReader.readAsDataURL(f);
     } else {
-      var ext = (f.name || "").split(".").pop().toLowerCase();
-      var textExts = ["txt", "js", "ts", "jsx", "tsx", "py", "html", "css", "json", "md", "csv", "c", "cpp", "h", "java", "sql", "xml", "yaml", "yml", "sh", "bat", "php", "go", "rs", "rb"];
+      var textExts = ["txt", "js", "ts", "jsx", "tsx", "py", "html", "css", "json", "md", "csv", "c", "cpp", "h", "java", "sql", "xml", "yaml", "yml", "sh", "bat", "php", "go", "rs", "rb", "log", "env"];
       var isTextFile = textExts.indexOf(ext) !== -1 || (f.type && f.type.indexOf("text") === 0);
 
       if (isTextFile) {
@@ -1462,8 +1877,7 @@
             type: "file",
             name: f.name || "file.txt",
             url: url,
-            mimeType: f.type || "text/plain",
-            data: btoa(unescape(encodeURIComponent(content.slice(0, 100000)))),
+            mimeType: "text/plain",
             textContent: content
           });
           renderAttachments();
@@ -1486,7 +1900,7 @@
     }
   }
 
-  /* ---------- Plus (+) Menu: Camera, Files, Gallery ---------- */
+  /* ---------- Plus (+) Menu: Camera, Files, Gallery, Image Gen, AI Tools ---------- */
   function closeAttachMenu() {
     if (el.attachMenu) el.attachMenu.classList.remove("open");
   }
@@ -1518,6 +1932,21 @@
       if (el.galleryInput) el.galleryInput.click();
     });
   }
+  if (el.menuImgGenBtn) {
+    el.menuImgGenBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      el.input.value = "/image ";
+      autosize();
+      el.input.focus();
+    });
+  }
+  if (el.menuPromptBtn) {
+    el.menuPromptBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      openSettings();
+      if (el.quickToolSelect) el.quickToolSelect.focus();
+    });
+  }
 
   document.addEventListener("click", function (e) {
     if (el.attachWrap && !el.attachWrap.contains(e.target)) {
@@ -1542,7 +1971,6 @@
     });
   }
 
-  // Direct clipboard paste for screenshots (Ctrl+V anywhere in composer)
   window.addEventListener("paste", function (e) {
     if (!e.clipboardData || !e.clipboardData.items) return;
     var items = e.clipboardData.items;
@@ -1652,7 +2080,7 @@
     });
   }
 
-  /* ---------- Main events ---------- */
+  /* ---------- Main events & Keyboard Shortcuts ---------- */
   el.composer.addEventListener("submit", function (e) { e.preventDefault(); send(); });
   el.input.addEventListener("input", autosize);
   el.input.addEventListener("keydown", function (e) {
@@ -1662,8 +2090,31 @@
   el.redoBtn.addEventListener("click", redo);
 
   document.addEventListener("keydown", function (e) {
-    if (!(e.ctrlKey || e.metaKey) || e.target === el.input) return;
-    if (e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+    if (e.key === "Escape") {
+      if (busy) { stopAiGeneration(); return; }
+      closeSettings();
+      closeMenu();
+      if (el.previewModal) el.previewModal.classList.remove("show");
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) {
+      var k = e.key.toLowerCase();
+      if (k === "k") {
+        e.preventDefault();
+        newChat();
+        return;
+      }
+      if (k === "/") {
+        e.preventDefault();
+        openMenu();
+        if (el.searchInput) el.searchInput.focus();
+        return;
+      }
+      if (e.target !== el.input && k === "z") {
+        e.preventDefault();
+        e.shiftKey ? redo() : undo();
+      }
+    }
   });
 
   el.history.addEventListener("click", function (e) {
@@ -1690,10 +2141,31 @@
     var action = btn.getAttribute("data-action");
 
     if (action === "delete-msg") deleteMessage(index);
+    else if (action === "edit-msg") editMessage(index);
+    else if (action === "regen-msg") regenerateMessage(index);
     else if (action === "copy-msg" && m) copyText(m.text).then(function () { flashCopyIcon(btn); });
     else if (action === "listen-msg" && m) speak(m.text, index, btn);
     else if (action === "download-msg" && m) {
       downloadText("vegas-ai-reply.txt", m.text, "text/plain");
+    }
+    else if (action === "share-msg" && m) {
+      if (navigator.share) {
+        navigator.share({ title: "Vegas AI Response", text: m.text }).catch(function () {});
+      } else {
+        copyText(m.text).then(function () { flashCopyIcon(btn); });
+      }
+    }
+    else if (action === "preview-code") {
+      var codeBlockElem = btn.closest("pre").querySelector("code");
+      var rawCode = codeBlockElem ? codeBlockElem.textContent : "";
+      var codeLang = (btn.getAttribute("data-lang") || "").toLowerCase();
+      var previewDoc = rawCode;
+      if (codeLang === "css") {
+        previewDoc = "<!DOCTYPE html><html><head><style>" + rawCode + "</style></head><body><h2>CSS Live Preview</h2><p>Sample preview content.</p><button>Sample Button</button></body></html>";
+      } else if (codeLang === "js" || codeLang === "javascript") {
+        previewDoc = "<!DOCTYPE html><html><body style='font-family:sans-serif;padding:16px;'><div id='app'>Running script...</div><script>try{" + rawCode + "}catch(e){document.body.innerHTML+='<pre style=\"color:red\">'+e+'</pre>';}<\/script></body></html>";
+      }
+      openCodePreview(previewDoc);
     }
     else if (action === "copy-code") {
       var codeText = btn.closest("pre").querySelector("code").textContent;
@@ -1741,6 +2213,7 @@
   applyTheme(currentThemeSetting());
   render();
   autosize();
+  checkPinLock();
 })();
 </script>
 <script>

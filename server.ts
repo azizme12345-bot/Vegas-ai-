@@ -184,10 +184,117 @@ async function startServer() {
     return { success: false, modelName: '' };
   }
 
+  async function extractUrlContext(text: string): Promise<string> {
+    if (!text) return '';
+    const urlMatches = String(text).match(/https?:\/\/[^\s)>\]"']+/gi);
+    if (!urlMatches || !urlMatches.length) return '';
+
+    const targetUrl = urlMatches[0];
+    try {
+      // 1. GitHub Repository URL Analysis
+      const ghMatch = targetUrl.match(/github\.com\/([^\/]+)\/([^\/#?]+)/i);
+      if (ghMatch) {
+        const owner = ghMatch[1];
+        const repo = ghMatch[2].replace(/\.git$/i, '');
+        const [repoRes, readmeRes] = await Promise.all([
+          fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+            headers: { 'User-Agent': 'Vegas-AI-Analyzer' },
+          }).catch(() => null),
+          fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, {
+            headers: {
+              'User-Agent': 'Vegas-AI-Analyzer',
+              Accept: 'application/vnd.github.v3.raw',
+            },
+          }).catch(() => null),
+        ]);
+
+        let info = `\n\n[GitHub Repository Context for ${owner}/${repo}]:\n`;
+        if (repoRes && repoRes.ok) {
+          const meta: any = await repoRes.json();
+          info += `Description: ${meta.description || 'N/A'}\nLanguage: ${
+            meta.language || 'N/A'
+          }\nStars: ${meta.stargazers_count || 0} | Forks: ${
+            meta.forks_count || 0
+          } | Open Issues: ${meta.open_issues_count || 0}\n`;
+        }
+        if (readmeRes && readmeRes.ok) {
+          const readmeText = await readmeRes.text();
+          info += `README Content:\n${readmeText.slice(0, 6000)}\n`;
+        }
+        return info;
+      }
+
+      // 2. YouTube Video URL Analysis
+      const ytMatch = targetUrl.match(
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/i
+      );
+      if (ytMatch) {
+        const videoId = ytMatch[1];
+        let ytInfo = `\n\n[YouTube Video Context (${targetUrl})]:\n`;
+        const oembedRes = await fetch(
+          `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+        ).catch(() => null);
+        if (oembedRes && oembedRes.ok) {
+          const oembed: any = await oembedRes.json();
+          ytInfo += `Title: ${oembed.title || ''}\nChannel: ${oembed.author_name || ''}\n`;
+        }
+        const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        }).catch(() => null);
+        if (pageRes && pageRes.ok) {
+          const html = await pageRes.text();
+          const descMatch = html.match(/"shortDescription":"((?:\\.|[^"\\])*)"/);
+          if (descMatch && descMatch[1]) {
+            try {
+              const parsedDesc = JSON.parse(`"${descMatch[1]}"`);
+              ytInfo += `Video Description / Details:\n${parsedDesc.slice(0, 4000)}\n`;
+            } catch (_e) {}
+          }
+        }
+        return ytInfo;
+      }
+
+      // 3. General Website URL Content Analysis
+      const webRes = await fetch(targetUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; VegasAI/1.0)',
+        },
+      }).catch(() => null);
+      if (webRes && webRes.ok) {
+        const contentType = webRes.headers.get('content-type') || '';
+        if (contentType.includes('text/html') || contentType.includes('text/plain')) {
+          const rawHtml = await webRes.text();
+          const titleMatch = rawHtml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+          const pageTitle = titleMatch ? titleMatch[1].trim() : '';
+          const cleanText = rawHtml
+            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 6000);
+          if (cleanText) {
+            return `\n\n[Webpage Content from ${targetUrl}]:\nTitle: ${pageTitle}\nContent: ${cleanText}\n`;
+          }
+        }
+      }
+    } catch (_e) {}
+    return '';
+  }
+
   // /api/chat - AI Chat Route
   app.post('/api/chat', async (req, res) => {
     try {
-      const { message, messages, providerPreference } = req.body;
+      const {
+        message,
+        messages,
+        providerPreference,
+        customInstructions,
+        responseLength,
+        aiMode,
+      } = req.body;
       let chatMessages = messages;
       if (!chatMessages && message) {
         chatMessages = [{ role: 'user', text: message }];
@@ -196,11 +303,67 @@ async function startServer() {
         return res.status(400).json({ error: 'Message or messages array is required' });
       }
 
-      const geminiContents = chatMessages.map((m: any) => {
+      const latestUserText = String(
+        message || (chatMessages.length ? chatMessages[chatMessages.length - 1]?.text || '' : '')
+      ).trim();
+
+      const activeGemini = getGeminiAi() || geminiAi;
+
+      // Check for image generation prompt
+      const lowerPrompt = latestUserText.toLowerCase();
+      const isImgReq =
+        lowerPrompt.startsWith('/image ') ||
+        /تصویر بنا|عکس بنا|تصویر کیجیے|تصویر بناؤ|تصویر بنائیں|پینٹنگ بنا|generate image|create image|generate an image|create an image|draw a |make an image|picture of |draw an image/i.test(
+          lowerPrompt
+        );
+
+      if (isImgReq && activeGemini && !isModelExhausted('gemini-3.1-flash-lite-image')) {
+        try {
+          const cleanImgPrompt = latestUserText.replace(/^\/image\s+/i, '').trim();
+          const imgRes = await activeGemini.models.generateContent({
+            model: 'gemini-3.1-flash-lite-image',
+            contents: { parts: [{ text: cleanImgPrompt }] },
+            config: { imageConfig: { aspectRatio: '1:1' } },
+          });
+          const parts = imgRes.candidates?.[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData?.data) {
+              const imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+              return res.json({
+                imageUrl,
+                reply: 'آپ کی فرمائش کے مطابق تصویر تیار کر دی گئی ہے:',
+              });
+            }
+          }
+        } catch (_imgErr) {}
+      }
+
+      const urlContext = await extractUrlContext(latestUserText);
+
+      let systemPrompt = coreSystemPrompt;
+      if (responseLength === 'short') {
+        systemPrompt +=
+          '\nطوالت کی ہدایت: جواب انتہائی مختصر، ٹو دی پوائنٹ اور جامع رکھیں (صرف ضروری نکات)۔';
+      } else if (responseLength === 'detailed') {
+        systemPrompt +=
+          '\nطوالت کی ہدایت: جواب مکمل تفصیل، مثالوں اور مرحلہ وار وضاحت (Step-by-step explanation) کے ساتھ دیں۔';
+      }
+      if (customInstructions && String(customInstructions).trim()) {
+        systemPrompt += `\nصارف کی خصوصی ہدایات: ${String(customInstructions).trim()}`;
+      }
+
+      const recentMessages = chatMessages.slice(-16);
+      const geminiContents = recentMessages.map((m: any, idx: number) => {
         const parts: any[] = [];
         if (m.media && Array.isArray(m.media)) {
           for (const item of m.media) {
-            if (item.data && item.mimeType) {
+            if (item.textContent) {
+              parts.push({
+                text: `\n[Attached File: ${item.name || 'document'}]\n${String(
+                  item.textContent
+                ).slice(0, 25000)}\n`,
+              });
+            } else if (item.data && item.mimeType) {
               const rawStr = String(item.data);
               const commaIdx = rawStr.indexOf(',');
               const cleanData = (
@@ -214,10 +377,14 @@ async function startServer() {
             }
           }
         }
-        if (m.text || m.content) parts.push({ text: m.text || m.content });
+        let msgText = String(m.text || m.content || '');
+        if (idx === recentMessages.length - 1 && urlContext) {
+          msgText += urlContext;
+        }
+        if (msgText) parts.push({ text: msgText });
         return {
           role: m.role === 'assistant' ? 'model' : 'user',
-          parts: parts.length > 0 ? parts : [{ text: '' }],
+          parts: parts.length > 0 ? parts : [{ text: 'Analyze this attachment.' }],
         };
       });
 
@@ -229,16 +396,23 @@ async function startServer() {
       let replyText = '';
       let success = false;
 
-      const activeGemini = getGeminiAi() || geminiAi;
-
       for (const provider of order) {
         if (provider === 'gemini' && activeGemini) {
-          const modelsToTry = [
-            { id: 'gemini-3.1-flash-lite', name: 'AI' },
-            { id: 'gemini-3.8-flash', name: 'AI' },
-            { id: 'gemini-flash-latest', name: 'AI' },
-            { id: 'gemini-2.5-flash', name: 'AI' },
-          ];
+          const modelsToTry =
+            aiMode === 'deep'
+              ? [
+                  { id: 'gemini-3-flash-preview' },
+                  { id: 'gemini-3.8-flash' },
+                  { id: 'gemini-3.1-flash-lite' },
+                  { id: 'gemini-flash-latest' },
+                ]
+              : [
+                  { id: 'gemini-3.1-flash-lite' },
+                  { id: 'gemini-3-flash-preview' },
+                  { id: 'gemini-3.8-flash' },
+                  { id: 'gemini-flash-latest' },
+                  { id: 'gemini-2.5-flash' },
+                ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;
             try {
@@ -246,7 +420,7 @@ async function startServer() {
                 model: m.id,
                 contents: geminiContents,
                 config: {
-                  systemInstruction: coreSystemPrompt,
+                  systemInstruction: systemPrompt,
                   thinkingConfig: { thinkingBudget: 0 },
                 },
               });
@@ -273,11 +447,11 @@ async function startServer() {
           }
           if (success) break;
         } else if (provider === 'openai' && openaiClient) {
-          const openAiMsgs = chatMessages.map((m: any) => ({
+          const openAiMsgs = recentMessages.map((m: any) => ({
             role: m.role === 'assistant' ? 'assistant' : 'user',
             content: m.text || m.content || '',
           }));
-          openAiMsgs.unshift({ role: 'system', content: coreSystemPrompt });
+          openAiMsgs.unshift({ role: 'system', content: systemPrompt });
           const modelsToTry = [{ id: 'gpt-4o-mini' }, { id: 'gpt-4o' }];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;
