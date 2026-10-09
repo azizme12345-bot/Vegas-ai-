@@ -180,23 +180,19 @@ async function startServer() {
     return { success: false, modelName: '' };
   }
 
-  // /api/chat - Dual AI Streaming Route
+  // /api/chat - AI Chat Route
   app.post('/api/chat', async (req, res) => {
     try {
-      const { messages, providerPreference } = req.body;
-      if (!messages || !Array.isArray(messages)) {
-        return res.status(400).json({ error: 'Messages array is required' });
+      const { message, messages, providerPreference } = req.body;
+      let chatMessages = messages;
+      if (!chatMessages && message) {
+        chatMessages = [{ role: 'user', text: message }];
+      }
+      if (!chatMessages || !Array.isArray(chatMessages)) {
+        return res.status(400).json({ error: 'Message or messages array is required' });
       }
 
-      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
-      if (typeof (res as any).flushHeaders === 'function') {
-        (res as any).flushHeaders();
-      }
-
-      const geminiContents = messages.map((m: any) => {
+      const geminiContents = chatMessages.map((m: any) => {
         const parts: any[] = [];
         if (m.media && Array.isArray(m.media)) {
           for (const item of m.media) {
@@ -220,45 +216,81 @@ async function startServer() {
         order = ['openai', 'gemini'];
       }
 
-      let handled = false;
+      let replyText = '';
+      let success = false;
 
       for (const provider of order) {
         if (provider === 'gemini' && geminiAi) {
-          const result = await streamGeminiChat(geminiContents, res);
-          if (result.success) {
-            handled = true;
-            break;
+          const modelsToTry = [
+            { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
+            { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite Preview' },
+            { id: 'gemini-flash-latest', name: 'Gemini Flash' },
+            { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+          ];
+          for (const m of modelsToTry) {
+            if (isModelExhausted(m.id)) continue;
+            try {
+              const response = await geminiAi.models.generateContent({
+                model: m.id,
+                contents: geminiContents,
+                config: {
+                  systemInstruction: coreSystemPrompt,
+                  thinkingConfig: { thinkingBudget: 0 },
+                },
+              });
+              if (response.text) {
+                replyText = response.text;
+                success = true;
+                break;
+              }
+            } catch (err: any) {
+              const msg = String(err?.message || err || '');
+              if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+                markModelExhausted(m.id, 60 * 60 * 1000);
+              }
+            }
           }
+          if (success) break;
         } else if (provider === 'openai' && openaiClient) {
-          const result = await streamOpenAIChat(messages, res);
-          if (result.success) {
-            handled = true;
-            break;
+          const openAiMsgs = chatMessages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.text || m.content || '',
+          }));
+          openAiMsgs.unshift({ role: 'system', content: coreSystemPrompt });
+          const modelsToTry = [{ id: 'gpt-4o-mini' }, { id: 'gpt-4o' }];
+          for (const m of modelsToTry) {
+            if (isModelExhausted(m.id)) continue;
+            try {
+              const completion = await openaiClient.chat.completions.create({
+                model: m.id,
+                messages: openAiMsgs as any,
+              });
+              const content = completion.choices[0]?.message?.content;
+              if (content) {
+                replyText = content;
+                success = true;
+                break;
+              }
+            } catch (err: any) {
+              const msg = String(err?.message || err || '');
+              if (msg.includes('429') || msg.includes('quota') || msg.includes('401')) {
+                markModelExhausted(m.id, 60 * 60 * 1000);
+              }
+            }
           }
+          if (success) break;
         }
       }
 
-      if (!handled) {
-        res.write(
-          `data: ${JSON.stringify({
-            error: 'معذرت، اس وقت تمام AI ماڈلز کا کوٹہ ختم ہے یا مصروف ہیں۔ براہ کرم کچھ دیر بعد کوشش کریں۔',
-          })}\n\n`
-        );
-      } else {
-        res.write('data: [DONE]\n\n');
+      if (!success || !replyText) {
+        return res.json({
+          error: 'معذرت، اس وقت تمام AI ماڈلز کا کوٹہ ختم ہے یا مصروف ہیں۔ براہ کرم کچھ دیر بعد کوشش کریں۔',
+        });
       }
-      res.end();
+
+      return res.json({ reply: replyText });
     } catch (_err: any) {
-      if (!res.headersSent) {
-        res.status(500).json({ error: 'سرور میں غیر متوقع خرابی پیش آئی۔' });
-      } else {
-        res.write(
-          `data: ${JSON.stringify({
-            error: 'معذرت، رابطہ قائم نہیں ہو سکا۔',
-          })}\n\n`
-        );
-        res.end();
-      }
+      return res.status(500).json({ error: 'سرور میں غیر متوقع خرابی پیش آئی۔' });
     }
   });
 

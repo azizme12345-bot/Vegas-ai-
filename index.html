@@ -332,9 +332,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         New chat
       </button>
-      <button type="button" class="feat" id="installPwaBtn" style="display:none;">
+      <button type="button" class="feat" id="installPwaBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-        Install App
+        Install App (ایپ انسٹال کریں)
       </button>
     </div>
 
@@ -544,12 +544,11 @@
 
   /* ---------- PWA Installation ---------- */
   var deferredPrompt;
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
   if (el.installPwaBtn) {
-    window.addEventListener('beforeinstallprompt', function(e) {
-      e.preventDefault();
-      deferredPrompt = e;
-      el.installPwaBtn.style.display = 'flex';
-    });
     el.installPwaBtn.addEventListener('click', function() {
       if (deferredPrompt) {
         deferredPrompt.prompt();
@@ -559,6 +558,8 @@
           }
           deferredPrompt = null;
         });
+      } else {
+        alert("PWA App Installation:\n\n• On Google Gemini / Chrome / Edge (PC/Mac):\nClick the install icon (🖥️ or +) in your browser address bar or open the browser menu (⋮) and select 'Install Vegas AI'.\n\n• On Mobile (Android/iOS):\nTap your browser menu (⋮ or Share) and select 'Add to Home Screen' or 'Install App'.\n\nOnce installed, you can use Vegas AI offline as a native desktop or mobile app!");
       }
     });
     window.addEventListener('appinstalled', function() {
@@ -566,7 +567,7 @@
     });
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-        el.installPwaBtn.style.display = 'none';
+      el.installPwaBtn.style.display = 'none';
     }
   }
 
@@ -1192,173 +1193,48 @@
     el.messages.appendChild(typIndicator);
     el.thread.scrollTop = el.thread.scrollHeight;
 
-    var providerPref = state.providerPreference || "auto";
-
-    if (isImagePrompt(text)) {
-      try {
-        var res = await fetch(API_IMAGE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: text, providerPreference: providerPref })
-        });
-        var data = await res.json();
-        if (typIndicator.parentNode) typIndicator.remove();
-
-        if (data.imageUrl) {
-          var imgMsg = {
-            role: "assistant",
-            text: "یہ رہی آپ کی تصویر:" + (data.text ? "\n" + data.text : ""),
-            media: [{ type: "image", name: "generated_image.png", url: data.imageUrl }]
-          };
-          c.messages.push(imgMsg);
-          el.messages.appendChild(createMessageElement(imgMsg, c.messages.length - 1));
-        } else {
-          var errMsg = {
-            role: "assistant",
-            text: data.error || "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں یا رابطہ نہیں ہو سکا۔",
-            failed: true,
-            media: []
-          };
-          c.messages.push(errMsg);
-          el.messages.appendChild(createMessageElement(errMsg, c.messages.length - 1));
-        }
-      } catch (err) {
-        if (typIndicator.parentNode) typIndicator.remove();
-        var netErrMsg = {
-          role: "assistant",
-          text: "معذرت، تصویر بنانے میں رابطہ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
-          failed: true,
-          media: []
-        };
-        c.messages.push(netErrMsg);
-        el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
-      }
-      busy = false; saveChats(); renderHistory();
-    } else {
-      var assistantMsg = { role: "assistant", text: "", media: [] };
-      c.messages.push(assistantMsg);
-      var assistantIdx = c.messages.length - 1;
-
-      var assistantElem = createMessageElement(assistantMsg, assistantIdx);
+    try {
+      var res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+      });
+      var data = await res.json();
       if (typIndicator.parentNode) typIndicator.remove();
-      el.messages.appendChild(assistantElem);
-      var bubbleElem = assistantElem.querySelector(".bubble");
-      bubbleElem.innerHTML = '<span style="color:var(--muted);font-size:14px;opacity:0.8;">…</span>';
 
-      try {
-        var allMsgs = c.messages.slice(0, -1);
-        var totalCount = allMsgs.length;
-        var apiMessages = allMsgs.map(function (m, idx) {
-          var includeMedia = idx >= totalCount - 2;
-          var combinedText = m.text || "";
-          if (includeMedia && m.media && Array.isArray(m.media)) {
-            m.media.forEach(function (med) {
-              if (med.textContent) {
-                combinedText += "\n\n[فائل: " + med.name + "]\n```\n" + med.textContent + "\n```";
-              }
-            });
-          }
-          return {
-            role: m.role,
-            text: combinedText,
-            media: includeMedia ? (m.media || []).filter(function (it) {
-              return it.data && it.mimeType && it.type !== "file";
-            }).map(function (item) {
-              return { data: item.data, mimeType: item.mimeType };
-            }) : []
-          };
-        });
-
-        var response = await fetch(API_CHAT_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: apiMessages, providerPreference: providerPref })
-        });
-
-        if (!response.ok) {
-          assistantMsg.text = "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں یا رابطہ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔";
-          assistantMsg.failed = true;
-          bubbleElem.innerHTML = renderBody(assistantMsg.text, true);
-          busy = false; saveChats(); renderHistory();
-          return;
-        }
-
-        var reader = response.body.getReader();
-        var decoder = new TextDecoder("utf-8");
-        var buffer = "";
-        var renderQueued = false;
-
-        function updateUi(force) {
-          if (force) {
-            renderQueued = false;
-            var isUrdu = hasUrdu(assistantMsg.text);
-            bubbleElem.setAttribute("dir", isUrdu ? "rtl" : "ltr");
-            bubbleElem.innerHTML = renderBody(assistantMsg.text, isUrdu);
-            el.thread.scrollTop = el.thread.scrollHeight;
-            return;
-          }
-          if (renderQueued) return;
-          renderQueued = true;
-          requestAnimationFrame(function () {
-            renderQueued = false;
-            var isUrdu = hasUrdu(assistantMsg.text);
-            bubbleElem.setAttribute("dir", isUrdu ? "rtl" : "ltr");
-            bubbleElem.innerHTML = renderBody(assistantMsg.text, isUrdu);
-            el.thread.scrollTop = el.thread.scrollHeight;
-          });
-        }
-
-        while (true) {
-          var chunk = await reader.read();
-          if (chunk.done) {
-            updateUi(true);
-            break;
-          }
-          buffer += decoder.decode(chunk.value, { stream: true });
-
-          var lines = buffer.split("\n\n");
-          buffer = lines.pop() || "";
-
-          for (var j = 0; j < lines.length; j++) {
-            var line = lines[j].trim();
-            if (line.indexOf("data: ") === 0) {
-              var payload = line.slice(6);
-              if (payload === "[DONE]") {
-                updateUi(true);
-                break;
-              }
-              try {
-                var parsed = JSON.parse(payload);
-                if (parsed.text) {
-                  assistantMsg.text += parsed.text;
-                  updateUi(false);
-                }
-                if (parsed.error) {
-                  assistantMsg.text = parsed.error;
-                  assistantMsg.failed = true;
-                  updateUi(true);
-                }
-              } catch (e) {}
-            }
-          }
-        }
-        updateUi(true);
-        if (assistantMsg.text && !assistantMsg.failed) {
-          prefetchTts(assistantMsg.text);
-        }
-      } catch (err) {
-        assistantMsg.text = "معذرت، اس وقت تمام AI ماڈلز مصروف ہیں۔ براہ کرم دوبارہ کوشش کریں۔";
+      var assistantMsg = { role: "assistant", text: "", media: [] };
+      if (data.error) {
+        assistantMsg.text = data.error;
         assistantMsg.failed = true;
-        bubbleElem.className = "bubble";
-        bubbleElem.setAttribute("dir", "rtl");
-        assistantElem.className = "msg assistant";
-        bubbleElem.innerHTML = renderBody(assistantMsg.text, true);
+      } else if (data.reply) {
+        assistantMsg.text = data.reply;
+      } else {
+        assistantMsg.text = "معذرت، کوئی جواب موصول نہیں ہوا۔";
+        assistantMsg.failed = true;
       }
 
-      busy = false;
-      saveChats();
-      renderHistory();
+      c.messages.push(assistantMsg);
+      el.messages.appendChild(createMessageElement(assistantMsg, c.messages.length - 1));
+      el.thread.scrollTop = el.thread.scrollHeight;
+
+      if (assistantMsg.text && !assistantMsg.failed) {
+        prefetchTts(assistantMsg.text);
+      }
+    } catch (err) {
+      if (typIndicator.parentNode) typIndicator.remove();
+      var netErrMsg = {
+        role: "assistant",
+        text: "معذرت، رابطہ قائم نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+        failed: true,
+        media: []
+      };
+      c.messages.push(netErrMsg);
+      el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
     }
+
+    busy = false;
+    saveChats();
+    renderHistory();
   }
 
   /* ---------- Send User Message (Immediate, No Delays) ---------- */
