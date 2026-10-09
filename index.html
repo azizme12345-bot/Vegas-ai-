@@ -19,7 +19,7 @@
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg: #FAFAFA;
@@ -29,7 +29,7 @@
     --muted: #6E6E6E;
     --user: #E8E8E8;
     --on-ink: #FAFAFA;
-    --font: "Noto Nastaliq Urdu", "Amiri", "Noto Sans Devanagari", serif;
+    --font: "Inter", "Noto Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -59,7 +59,9 @@
     color: var(--ink);
     font-family: var(--font);
     font-size: 15px;
-    line-height: 2;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   button, textarea, input, select { font-family: var(--font); font-size: inherit; color: inherit; }
   button { cursor: pointer; background: none; border: 0; padding: 0; }
@@ -187,7 +189,7 @@
   .bubble {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    line-height: 2;
+    line-height: 1.75;
     font-size: 15px;
     direction: ltr;
     text-align: left;
@@ -202,14 +204,14 @@
     padding: 8px 14px;
     border-radius: 18px;
     font-size: 15px;
-    line-height: 2;
+    line-height: 1.75;
     max-width: 80%;
   }
   .msg.assistant .bubble {
     padding: 2px 0;
     max-width: 100%;
     font-size: 15px;
-    line-height: 2;
+    line-height: 1.75;
   }
 
   /* Action Buttons (Icon-only) */
@@ -817,9 +819,9 @@
 
   /* ---------- Markdown Parser with Language Support ---------- */
   function inlineFormat(str) {
-    str = str.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+    str = str.replace(/(\*\*|__)(.*?)\1/g, '<strong style="font-weight:600;">$2</strong>');
     str = str.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
-    str = str.replace(/`([^`]+)`/g, '<code style="background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:2px 5px;font-size:13px;direction:ltr;display:inline-block;">$1</code>');
+    str = str.replace(/`([^`]+)`/g, '<code dir="ltr" style="background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13.5px;direction:ltr;unicode-bidi:isolate;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">$1</code>');
     return str;
   }
 
@@ -886,29 +888,37 @@
       if (headerMatch) {
         if (inList) { html += "</" + inList + ">"; inList = null; }
         var level = headerMatch[1].length;
-        html += '<h' + Math.min(level + 2, 6) + ' style="font-weight:600;margin:10px 0 4px 0;">' + inlineFormat(escapeHtml(headerMatch[2])) + '</h' + Math.min(level + 2, 6) + '>';
+        var hUrdu = hasUrdu(headerMatch[2]);
+        var hStyle = hUrdu ? 'font-weight:600;margin:10px 0 4px 0;direction:rtl;text-align:right;' : 'font-weight:600;margin:10px 0 4px 0;direction:ltr;text-align:left;';
+        html += '<h' + Math.min(level + 2, 6) + ' dir="' + (hUrdu ? 'rtl' : 'ltr') + '" style="' + hStyle + '">' + inlineFormat(escapeHtml(headerMatch[2])) + '</h' + Math.min(level + 2, 6) + '>';
         continue;
       }
 
       var ulMatch = line.match(/^[\*\-]\s+(.*)$/);
       if (ulMatch) {
+        var liUrdu = hasUrdu(ulMatch[1]);
         if (inList !== "ul") {
           if (inList) html += "</" + inList + ">";
-          html += '<ul style="margin:6px 0;padding-inline-start:24px;list-style-type:disc;">';
+          var ulDir = (liUrdu || isUrdu) ? 'direction:rtl;text-align:right;' : 'direction:ltr;text-align:left;';
+          html += '<ul style="margin:6px 0;padding-inline-start:24px;list-style-type:disc;' + ulDir + '">';
           inList = "ul";
         }
-        html += '<li style="margin:2px 0;">' + inlineFormat(escapeHtml(ulMatch[1])) + '</li>';
+        var liStyle = liUrdu ? 'margin:4px 0;direction:rtl;text-align:right;' : 'margin:4px 0;direction:ltr;text-align:left;';
+        html += '<li dir="' + (liUrdu ? 'rtl' : 'ltr') + '" style="' + liStyle + '">' + inlineFormat(escapeHtml(ulMatch[1])) + '</li>';
         continue;
       }
 
       var olMatch = line.match(/^\d+\.\s+(.*)$/);
       if (olMatch) {
+        var oliUrdu = hasUrdu(olMatch[1]);
         if (inList !== "ol") {
           if (inList) html += "</" + inList + ">";
-          html += '<ol style="margin:6px 0;padding-inline-start:24px;list-style-type:decimal;">';
+          var olDir = (oliUrdu || isUrdu) ? 'direction:rtl;text-align:right;' : 'direction:ltr;text-align:left;';
+          html += '<ol style="margin:6px 0;padding-inline-start:24px;list-style-type:decimal;' + olDir + '">';
           inList = "ol";
         }
-        html += '<li style="margin:2px 0;">' + inlineFormat(escapeHtml(olMatch[1])) + '</li>';
+        var oliStyle = oliUrdu ? 'margin:4px 0;direction:rtl;text-align:right;' : 'margin:4px 0;direction:ltr;text-align:left;';
+        html += '<li dir="' + (oliUrdu ? 'rtl' : 'ltr') + '" style="' + oliStyle + '">' + inlineFormat(escapeHtml(olMatch[1])) + '</li>';
         continue;
       }
 
@@ -919,7 +929,9 @@
 
       var bqMatch = line.match(/^>\s?(.*)$/);
       if (bqMatch) {
-        html += '<blockquote style="border-inline-start:3px solid var(--muted);margin:6px 0;padding-inline-start:10px;color:var(--muted);">' + inlineFormat(escapeHtml(bqMatch[1])) + '</blockquote>';
+        var bqUrdu = hasUrdu(bqMatch[1]);
+        var bqDir = bqUrdu ? 'direction:rtl;text-align:right;' : 'direction:ltr;text-align:left;';
+        html += '<blockquote dir="' + (bqUrdu ? 'rtl' : 'ltr') + '" style="border-inline-start:3px solid var(--muted);margin:6px 0;padding-inline-start:10px;color:var(--muted);' + bqDir + '">' + inlineFormat(escapeHtml(bqMatch[1])) + '</blockquote>';
         continue;
       }
 
@@ -928,8 +940,9 @@
         continue;
       }
 
-      var pStyle = isUrdu ? 'margin:2px 0; direction:rtl; text-align:right;' : 'margin:2px 0; direction:ltr; text-align:left;';
-      html += '<p style="' + pStyle + '">' + inlineFormat(escapeHtml(line)) + '</p>';
+      var lineUrdu = hasUrdu(line);
+      var pStyle = lineUrdu ? 'margin:4px 0; direction:rtl; text-align:right;' : 'margin:4px 0; direction:ltr; text-align:left;';
+      html += '<p dir="' + (lineUrdu ? 'rtl' : 'ltr') + '" style="' + pStyle + '">' + inlineFormat(escapeHtml(line)) + '</p>';
     }
 
     if (inList) html += "</" + inList + ">";

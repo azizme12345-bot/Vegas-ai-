@@ -14,24 +14,34 @@ async function startServer() {
 
   app.use(express.json({ limit: '25mb' }));
 
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  const openaiApiKey = process.env.OPENAI_API_KEY;
-
-  const geminiAi = geminiApiKey
-    ? new GoogleGenAI({
-        apiKey: geminiApiKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          },
+  function getGeminiAi(): GoogleGenAI | null {
+    const key = String(
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.API_KEY ||
+      process.env.VITE_GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      ''
+    )
+      .trim()
+      .replace(/^["']|["']$/g, '');
+    if (!key) return null;
+    return new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
         },
-      })
-    : null;
+      },
+    });
+  }
 
+  const geminiAi = getGeminiAi();
+  const openaiApiKey = process.env.OPENAI_API_KEY;
   const isValidOpenAiKey = Boolean(openaiApiKey && openaiApiKey.trim().startsWith('sk-'));
   const openaiClient = isValidOpenAiKey ? new OpenAI({ apiKey: openaiApiKey!.trim() }) : null;
 
-  // Cache models that hit 429 quota limits so we skip them immediately on future requests
+  // Cache models that hit 429 quota limits or 404 so we skip them immediately on future requests
   const exhaustedModels = new Map<string, number>();
   // In-memory TTS audio cache for instant 0ms playback
   const ttsAudioCache = new Map<string, string>();
@@ -51,14 +61,15 @@ async function startServer() {
   }
 
   const coreSystemPrompt =
-    "صارف جس زبان میں لکھے اسی زبان میں جواب دیں، جواب سیدھا، صاف اور مختصر ہو۔";
+    "صارف جس زبان میں لکھے اسی زبان میں جواب دیں۔ اردو میں جواب دیتے وقت صاف، قدرتی اور جدید اردو استعمال کریں، اور جہاں تکنیکی یا عام انگریزی اصطلاحات (جیسے Environment Variables وغیرہ) موزوں ہوں انہیں قدرتی طور پر شامل کریں۔ اہم نکات کو بولڈ عنوان کے ساتھ (جیسے: **تیز رفتار ماڈل فال بیک:** اگر کسی ایک ماڈل پر جواب نہ ملے...) صاف، سیدھے اور مختصر انداز میں لکھیں۔";
 
   // Helper for Gemini chat stream (Optimized for <1s Time-To-First-Token)
   async function streamGeminiChat(
     contents: any[],
     res: express.Response
   ): Promise<{ success: boolean; modelName: string }> {
-    if (!geminiAi) return { success: false, modelName: '' };
+    const activeGemini = getGeminiAi() || geminiAi;
+    if (!activeGemini) return { success: false, modelName: '' };
 
     const modelsToTry = [
       { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
@@ -71,7 +82,7 @@ async function startServer() {
       if (isModelExhausted(m.id)) continue;
 
       try {
-        const responseStream = await geminiAi.models.generateContentStream({
+        const responseStream = await activeGemini.models.generateContentStream({
           model: m.id,
           contents: contents,
           config: {
@@ -218,19 +229,20 @@ async function startServer() {
       let replyText = '';
       let success = false;
 
+      const activeGemini = getGeminiAi() || geminiAi;
+
       for (const provider of order) {
-        if (provider === 'gemini' && geminiAi) {
+        if (provider === 'gemini' && activeGemini) {
           const modelsToTry = [
-            { id: 'gemini-2.5-flash', name: 'AI' },
             { id: 'gemini-3.1-flash-lite', name: 'AI' },
-            { id: 'gemini-3.1-flash-lite-preview', name: 'AI' },
-            { id: 'gemini-flash-latest', name: 'AI' },
             { id: 'gemini-3.8-flash', name: 'AI' },
+            { id: 'gemini-flash-latest', name: 'AI' },
+            { id: 'gemini-2.5-flash', name: 'AI' },
           ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;
             try {
-              const response = await geminiAi.models.generateContent({
+              const response = await activeGemini.models.generateContent({
                 model: m.id,
                 contents: geminiContents,
                 config: {
@@ -245,7 +257,16 @@ async function startServer() {
               }
             } catch (err: any) {
               const msg = String(err?.message || err || '');
-              if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+              const status = err?.status || err?.code;
+              if (
+                status === 404 ||
+                status === 429 ||
+                msg.includes('404') ||
+                msg.includes('NOT_FOUND') ||
+                msg.includes('429') ||
+                msg.includes('RESOURCE_EXHAUSTED') ||
+                msg.includes('quota')
+              ) {
                 markModelExhausted(m.id, 60 * 60 * 1000);
               }
             }
