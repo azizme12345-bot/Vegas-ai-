@@ -190,6 +190,92 @@ async function tryGenerateImage(promptText, apiKey) {
   return null;
 }
 
+async function transcribeAudioWithGemini(audioBase64, mimeType, apiKey) {
+  const rawAudio = String(audioBase64 || "");
+  const commaIdx = rawAudio.indexOf(",");
+  const cleanBase64 = (
+    commaIdx !== -1 && rawAudio.startsWith("data:")
+      ? rawAudio.slice(commaIdx + 1)
+      : rawAudio
+  ).replace(/\s/g, "");
+  const cleanMime =
+    String(mimeType || "audio/webm")
+      .split(";")[0]
+      .trim() || "audio/webm";
+
+  if (!cleanBase64) {
+    return { error: "کوئی آواز سنائی نہیں دی۔ براہ کرم دوبارہ بولنے کی کوشش کریں۔" };
+  }
+
+  const sttModels = [
+    "gemini-2.5-flash",
+    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+  ];
+
+  const promptText =
+    "Transcribe the spoken words in this audio recording accurately. " +
+    "IMPORTANT: If the speech is in Urdu or Hindi, you MUST write it strictly in Urdu script (اردو رسم الخط، مثلاً: اسلام علیکم، آپ کیسے ہیں؟) and NEVER in Devanagari/Hindi script. " +
+    "If the speech is in English, write it in English. " +
+    "Output ONLY the transcribed text without any quotes, explanations, or commentary. " +
+    "If there is only silence or background noise with no human speech, output [NO_SPEECH].";
+
+  for (const modelName of sttModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
+        apiKey
+      )}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "aistudio-build",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: cleanMime,
+                    data: cleanBase64,
+                  },
+                },
+                { text: promptText },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const parts = data?.candidates?.[0]?.content?.parts;
+      if (Array.isArray(parts)) {
+        const transcript = parts
+          .map((p) => (typeof p?.text === "string" ? p.text : ""))
+          .join("")
+          .trim()
+          .replace(/^["'“”]+|["'“”]+$/g, "");
+
+        if (transcript.includes("[NO_SPEECH]")) {
+          return { text: "" };
+        }
+        if (transcript) {
+          return { text: transcript };
+        }
+      }
+    } catch (_e) {}
+  }
+
+  return {
+    error: "آواز شناخت کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔",
+  };
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -222,6 +308,19 @@ export default async function handler(req, res) {
       }
     } else if (!body || typeof body !== "object") {
       body = {};
+    }
+
+    // Handle Voice-to-Text Transcription request
+    if (body.action === "transcribe" || (body.audio && !body.message && !body.messages)) {
+      const sttResult = await transcribeAudioWithGemini(
+        body.audio,
+        body.mimeType,
+        apiKey
+      );
+      if (sttResult.error) {
+        return res.status(500).json({ error: sttResult.error });
+      }
+      return res.status(200).json({ text: sttResult.text || "", reply: sttResult.text || "" });
     }
 
     const singleMessage = String(body.message || "").trim();

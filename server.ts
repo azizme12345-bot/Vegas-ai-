@@ -288,6 +288,9 @@ async function startServer() {
   app.post('/api/chat', async (req, res) => {
     try {
       const {
+        action,
+        audio,
+        mimeType,
         message,
         messages,
         providerPreference,
@@ -295,6 +298,73 @@ async function startServer() {
         responseLength,
         aiMode,
       } = req.body;
+
+      const activeGemini = getGeminiAi() || geminiAi;
+
+      if (action === 'transcribe' || (audio && !message && !messages)) {
+        const rawAudio = String(audio || '');
+        const commaIdx = rawAudio.indexOf(',');
+        const cleanBase64 = (
+          commaIdx !== -1 && rawAudio.startsWith('data:')
+            ? rawAudio.slice(commaIdx + 1)
+            : rawAudio
+        ).replace(/\s/g, '');
+        const cleanMime = String(mimeType || 'audio/webm').split(';')[0].trim() || 'audio/webm';
+
+        if (!cleanBase64) {
+          return res.status(400).json({ error: 'کوئی آواز سنائی نہیں دی۔' });
+        }
+
+        if (activeGemini) {
+          const sttModels = [
+            'gemini-2.5-flash',
+            'gemini-3-flash-preview',
+            'gemini-3.1-flash-lite',
+            'gemini-flash-latest',
+          ];
+          for (const m of sttModels) {
+            if (isModelExhausted(m)) continue;
+            try {
+              const response = await activeGemini.models.generateContent({
+                model: m,
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        inlineData: {
+                          mimeType: cleanMime,
+                          data: cleanBase64,
+                        },
+                      },
+                      {
+                        text:
+                          'Transcribe the spoken words in this audio recording accurately. ' +
+                          'IMPORTANT: If the speech is in Urdu or Hindi, you MUST write it strictly in Urdu script (اردو رسم الخط، مثلاً: اسلام علیکم، آپ کیسے ہیں؟) and NEVER in Devanagari/Hindi script. ' +
+                          'If the speech is in English, write it in English. ' +
+                          'Output ONLY the transcribed text without any quotes, explanations, or commentary. ' +
+                          'If there is only silence or background noise with no human speech, output [NO_SPEECH].',
+                      },
+                    ],
+                  },
+                ],
+              });
+              const transcript = (response.text || '').trim().replace(/^["'“”]+|["'“”]+$/g, '');
+              if (transcript && !transcript.includes('[NO_SPEECH]')) {
+                return res.json({ text: transcript, reply: transcript });
+              }
+              return res.json({ text: '', reply: '' });
+            } catch (err: any) {
+              const msg = String(err?.message || err || '');
+              if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+                markModelExhausted(m, 30 * 60 * 1000);
+              }
+            }
+          }
+        }
+        return res.status(503).json({ error: 'آواز شناخت کرنے میں خرابی پیش آئی۔' });
+      }
+
       let chatMessages = messages;
       if (!chatMessages && message) {
         chatMessages = [{ role: 'user', text: message }];
@@ -306,8 +376,6 @@ async function startServer() {
       const latestUserText = String(
         message || (chatMessages.length ? chatMessages[chatMessages.length - 1]?.text || '' : '')
       ).trim();
-
-      const activeGemini = getGeminiAi() || geminiAi;
 
       // Check for image generation prompt
       const lowerPrompt = latestUserText.toLowerCase();
@@ -508,17 +576,18 @@ async function startServer() {
       }
 
       // 1. Primary: Ultra-fast Gemini audio transcription (~1.2s)
-      if (geminiAi) {
+      const activeGemini = getGeminiAi() || geminiAi;
+      if (activeGemini) {
         const sttModels = [
+          'gemini-2.5-flash',
+          'gemini-3-flash-preview',
           'gemini-3.1-flash-lite',
-          'gemini-3.5-transcribe',
-          'gemini-3.8-flash',
           'gemini-flash-latest',
         ];
         for (const m of sttModels) {
           if (isModelExhausted(m)) continue;
           try {
-            const response = await geminiAi.models.generateContent({
+            const response = await activeGemini.models.generateContent({
               model: m,
               contents: [
                 {
