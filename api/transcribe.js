@@ -58,7 +58,8 @@ export default async function handler(req, res) {
     }
 
     const sttModels = [
-      "gemini-2.5-flash",
+      "gemini-3.8-flash",
+      "gemini-3.5-flash",
       "gemini-3-flash-preview",
       "gemini-3.1-flash-lite",
       "gemini-flash-latest",

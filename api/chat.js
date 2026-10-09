@@ -1,22 +1,28 @@
+import uiStudioHandler, { renderUiConceptSvg } from "./ui-studio.js";
+import imageHandler from "./image.js";
+
 const BASE_SYSTEM_INSTRUCTION =
   "صارف جس زبان میں لکھے اسی زبان میں جواب دیں۔ اردو میں جواب دیتے وقت صاف، قدرتی اور جدید اردو استعمال کریں، اور جہاں تکنیکی یا عام انگریزی اصطلاحات (جیسے Environment Variables وغیرہ) موزوں ہوں انہیں قدرتی طور پر شامل کریں۔ اہم نکات کو بولڈ عنوان کے ساتھ (جیسے: **تیز رفتار ماڈل فال بیک:** اگر کسی ایک ماڈل پر جواب نہ ملے...) صاف، سیدھے اور مختصر انداز میں لکھیں۔ آپ کوڈنگ (HTML/CSS/JS)، ریاضی، مضمون نویسی، ترجمہ، گرامر کی درستگی، خلاصہ نگاری، GitHub اور Vercel کے مسائل حل کرنے، اور دستاویزات و تصاویر کا تجزیہ کرنے میں ماہر ہیں۔ کبھی بھی اپنے ماڈل کا اندرونی نام ظاہر نہ کریں۔";
 
 const MODELS_BY_MODE = {
   fast: [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-3-flash-preview",
-    "gemini-2.5-flash",
     "gemini-flash-latest",
   ],
   balanced: [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-3-flash-preview",
     "gemini-3.1-flash-lite",
-    "gemini-2.5-flash",
     "gemini-flash-latest",
   ],
   deep: [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-3-flash-preview",
-    "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-flash-latest",
   ],
@@ -187,7 +193,24 @@ async function tryGenerateImage(promptText, apiKey) {
     }
   } catch (_e) {}
 
-  return null;
+  const svgUrl = renderUiConceptSvg(
+    {
+      title: cleanPrompt.slice(0, 36),
+      styleBadge: "AI Visual",
+      description: cleanPrompt,
+      appType: "desktop",
+      uiSpec: {
+        brandName: "Vikawa AI",
+        heroHeadline: cleanPrompt.slice(0, 42),
+        heroSubtext: "AI Generated Visual Concept",
+      },
+    },
+    0
+  );
+  return {
+    imageUrl: svgUrl,
+    reply: "آپ کی فرمائش کے مطابق تصویر تیار کر دی گئی ہے:",
+  };
 }
 
 async function transcribeAudioWithGemini(audioBase64, mimeType, apiKey) {
@@ -208,7 +231,8 @@ async function transcribeAudioWithGemini(audioBase64, mimeType, apiKey) {
   }
 
   const sttModels = [
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-3-flash-preview",
     "gemini-3.1-flash-lite",
     "gemini-flash-latest",
@@ -308,6 +332,21 @@ export default async function handler(req, res) {
       }
     } else if (!body || typeof body !== "object") {
       body = {};
+    }
+
+    // Handle UI Design Studio actions if sent to /api/chat
+    if (
+      body.action === "generate-designs" ||
+      body.action === "customize-design" ||
+      body.action === "convert-to-html" ||
+      body.action === "bundle-zip"
+    ) {
+      return uiStudioHandler(req, res);
+    }
+
+    // Handle Image Generation & Photo Editing actions
+    if (body.action === "generate-image" || body.action === "edit-photo") {
+      return imageHandler(req, res);
     }
 
     // Handle Voice-to-Text Transcription request

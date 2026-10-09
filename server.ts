@@ -5,6 +5,10 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import fs from 'fs';
 import path from 'path';
+// @ts-ignore
+import uiStudioHandler, { renderUiConceptSvg } from './api/ui-studio.js';
+// @ts-ignore
+import imageHandler from './api/image.js';
 
 dotenv.config();
 
@@ -13,6 +17,8 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: '25mb' }));
+  app.use(express.static('public'));
+  app.use('/jszip.min.js', express.static(path.resolve(process.cwd(), 'node_modules/jszip/dist/jszip.min.js')));
 
   function getGeminiAi(): GoogleGenAI | null {
     const key = String(
@@ -317,7 +323,8 @@ async function startServer() {
 
         if (activeGemini) {
           const sttModels = [
-            'gemini-2.5-flash',
+            'gemini-3.8-flash',
+            'gemini-3.5-flash',
             'gemini-3-flash-preview',
             'gemini-3.1-flash-lite',
             'gemini-flash-latest',
@@ -469,17 +476,18 @@ async function startServer() {
           const modelsToTry =
             aiMode === 'deep'
               ? [
-                  { id: 'gemini-3-flash-preview' },
                   { id: 'gemini-3.8-flash' },
+                  { id: 'gemini-3.5-flash' },
+                  { id: 'gemini-3-flash-preview' },
                   { id: 'gemini-3.1-flash-lite' },
                   { id: 'gemini-flash-latest' },
                 ]
               : [
+                  { id: 'gemini-3.8-flash' },
+                  { id: 'gemini-3.5-flash' },
                   { id: 'gemini-3.1-flash-lite' },
                   { id: 'gemini-3-flash-preview' },
-                  { id: 'gemini-3.8-flash' },
                   { id: 'gemini-flash-latest' },
-                  { id: 'gemini-2.5-flash' },
                 ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;
@@ -579,7 +587,8 @@ async function startServer() {
       const activeGemini = getGeminiAi() || geminiAi;
       if (activeGemini) {
         const sttModels = [
-          'gemini-2.5-flash',
+          'gemini-3.8-flash',
+          'gemini-3.5-flash',
           'gemini-3-flash-preview',
           'gemini-3.1-flash-lite',
           'gemini-flash-latest',
@@ -823,84 +832,14 @@ async function startServer() {
     }
   });
 
-  // /api/image - Dual Image Route
+  // /api/image - Complete AI Image Generation & Photo Editing Route
   app.post('/api/image', async (req, res) => {
-    try {
-      const { prompt, providerPreference } = req.body;
-      if (!prompt) {
-        return res.status(400).json({ error: 'تصویر بنانے کا پیغام درکار ہے۔' });
-      }
+    return imageHandler(req, res);
+  });
 
-      let imageUrl = '';
-      let usedModel = '';
-
-      let order: ('gemini' | 'openai')[] = ['gemini', 'openai'];
-      if (providerPreference === 'openai') {
-        order = ['openai', 'gemini'];
-      }
-
-      for (const provider of order) {
-        if (provider === 'gemini' && geminiAi && !isModelExhausted('gemini-3.1-flash-lite-image')) {
-          try {
-            const response = await geminiAi.models.generateContent({
-              model: 'gemini-3.1-flash-lite-image',
-              contents: { parts: [{ text: prompt }] },
-              config: { imageConfig: { aspectRatio: '1:1' } },
-            });
-            if (response.candidates?.[0]?.content?.parts) {
-              for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                  imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-                  usedModel = 'Gemini Flash Lite Image';
-                  break;
-                }
-              }
-            }
-          } catch (e: any) {
-            const msg = String(e?.message || e || '');
-            if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
-              markModelExhausted('gemini-3.1-flash-lite-image', 60 * 60 * 1000);
-            }
-          }
-        }
-
-        if (!imageUrl && provider === 'openai' && openaiClient && !isModelExhausted('dall-e-3')) {
-          try {
-            const imageRes = await openaiClient.images.generate({
-              model: 'dall-e-3',
-              prompt: prompt,
-              n: 1,
-              size: '1024x1024',
-              response_format: 'b64_json',
-            });
-            const b64 = imageRes.data && imageRes.data[0] ? imageRes.data[0].b64_json : null;
-            if (b64) {
-              imageUrl = `data:image/png;base64,${b64}`;
-              usedModel = 'OpenAI DALL-E 3';
-            }
-          } catch (e: any) {
-            const msg = String(e?.message || e || '');
-            if (msg.includes('429')) {
-              markModelExhausted('dall-e-3', 30 * 60 * 1000);
-            }
-          }
-        }
-
-        if (imageUrl) break;
-      }
-
-      if (!imageUrl) {
-        return res.status(500).json({
-          error: 'معذرت، تصویر نہیں بنائی جا سکی۔ براہ کرم کچھ دیر بعد دوبارہ کوشش کریں۔',
-        });
-      }
-
-      res.json({ imageUrl });
-    } catch (_err: any) {
-      res.status(500).json({
-        error: 'معذرت، تصویر بنانے میں خرابی ہوئی ہے۔',
-      });
-    }
+  // /api/ui-studio - Dedicated AI UI Design Studio Route
+  app.post('/api/ui-studio', async (req, res) => {
+    return uiStudioHandler(req, res);
   });
 
   if (process.env.NODE_ENV !== 'production') {
