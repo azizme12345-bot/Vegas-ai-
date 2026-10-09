@@ -51,14 +51,7 @@ async function startServer() {
   }
 
   const coreSystemPrompt =
-    "You are Vegas AI, an intelligent, articulate, friendly, and thoughtful conversational companion.\n" +
-    "GUIDELINES:\n" +
-    "1. LANGUAGE: Respond strictly in the same language the user communicates in (Urdu if user writes in Urdu, English if English, Hindi if Hindi, etc.). Do not mix multiple languages or duplicate answers.\n" +
-    "2. COMPREHENSIVE & CLEAR CONVERSATION: Provide detailed, well-explained, clear, and comprehensive conversation (لمبی، تفصیلی، اور واضح بات چیت). Explain things clearly and thoroughly with depth, helpful insights, and warm conversational tone.\n" +
-    "3. NATURAL HUMAN STYLE: Speak naturally and warmly like a normal, engaging human conversation (عام بول چال اور گفتگو). Do NOT create tables, rigid boxes, cards, or artificial framing borders. Write in smooth, easy-to-read, standard prose.\n" +
-    "4. VIDEO ANALYSIS (ویڈیو اینالائزر): When the user shares a video or video frames, thoroughly analyze the video: explain how it is made/filmed/edited, its style and structure, identify any flaws, technical issues, or visual problems inside it, and give clear, practical advice on how to fix and improve it.\n" +
-    "5. IMAGE & PHOTO PROBLEM SOLVER (تصویر اینالائزر اور مسئلہ حل کرنے والا): When the user shares a photo/image, carefully inspect it. If there is any problem, error, defect, or question in the image, clearly diagnose what the issue is and provide practical, step-by-step suggestions to solve it.\n" +
-    "6. HELPFUL & DIRECT: Answer the user's questions clearly, sensibly, and immediately.";
+    "صارف جس زبان میں لکھے اسی زبان میں جواب دیں، جواب سیدھا، صاف اور مختصر ہو۔";
 
   // Helper for Gemini chat stream (Optimized for <1s Time-To-First-Token)
   async function streamGeminiChat(
@@ -228,10 +221,11 @@ async function startServer() {
       for (const provider of order) {
         if (provider === 'gemini' && geminiAi) {
           const modelsToTry = [
-            { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
-            { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite Preview' },
-            { id: 'gemini-flash-latest', name: 'Gemini Flash' },
-            { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+            { id: 'gemini-2.5-flash', name: 'AI' },
+            { id: 'gemini-3.1-flash-lite', name: 'AI' },
+            { id: 'gemini-3.1-flash-lite-preview', name: 'AI' },
+            { id: 'gemini-flash-latest', name: 'AI' },
+            { id: 'gemini-3.8-flash', name: 'AI' },
           ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;

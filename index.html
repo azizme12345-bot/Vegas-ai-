@@ -17,6 +17,9 @@
 <link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
     --bg: #FAFAFA;
@@ -26,7 +29,7 @@
     --muted: #6E6E6E;
     --user: #E8E8E8;
     --on-ink: #FAFAFA;
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font: "Noto Nastaliq Urdu", "Amiri", "Noto Sans Devanagari", serif;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -56,7 +59,7 @@
     color: var(--ink);
     font-family: var(--font);
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 2;
   }
   button, textarea, input, select { font-family: var(--font); font-size: inherit; color: inherit; }
   button { cursor: pointer; background: none; border: 0; padding: 0; }
@@ -184,7 +187,7 @@
   .bubble {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    line-height: 1.6;
+    line-height: 2;
     font-size: 15px;
     direction: ltr;
     text-align: left;
@@ -199,14 +202,14 @@
     padding: 8px 14px;
     border-radius: 18px;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 2;
     max-width: 80%;
   }
   .msg.assistant .bubble {
     padding: 2px 0;
     max-width: 100%;
     font-size: 15px;
-    line-height: 1.6;
+    line-height: 2;
   }
 
   /* Action Buttons (Icon-only) */
@@ -277,7 +280,7 @@
   }
   .pill textarea {
     flex: 1; resize: none; border: 0; background: transparent;
-    padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 1.8; font-size: 15px; font-family: var(--font);
+    padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 2; font-size: 15px; font-family: var(--font);
   }
   .pill textarea:focus { outline: none; }
   .pill textarea::placeholder { color: var(--muted); }
@@ -436,15 +439,6 @@
       </div>
 
       <div class="field">
-        <label for="providerSelect">AI Provider (AI فراہم کنندہ)</label>
-        <select id="providerSelect">
-          <option value="auto">Auto Fallback (خودکار - Gemini + OpenAI)</option>
-          <option value="gemini">Google Gemini Primary</option>
-          <option value="openai">OpenAI Primary</option>
-        </select>
-      </div>
-
-      <div class="field">
         <span class="lbl">Appearance</span>
         <div class="seg" role="group" aria-label="Theme">
           <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
@@ -465,14 +459,13 @@
   var KEY = "vegas-ai-chats";
   var THEME_KEY = "vegas-ai-theme";
   var PROFILE_KEY = "vegas-ai-profile";
-  var PROVIDER_KEY = "vegas-ai-provider";
 
   var API_CHAT_URL = "/api/chat";
   var API_IMAGE_URL = "/api/image";
   var API_TTS_URL = "/api/tts";
   var API_TRANSCRIBE_URL = "/api/transcribe";
 
-  var state = { chats: [], currentId: null, profile: { name: "User", photo: "" }, providerPreference: "auto" };
+  var state = { chats: [], currentId: null, profile: { name: "User", photo: "" } };
   var undoStack = [], redoStack = [];
   var pending = [];
   var busy = false;
@@ -495,7 +488,7 @@
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
     settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
-    nameInput: $("nameInput"), providerSelect: $("providerSelect"), clearAll: $("clearAll"),
+    nameInput: $("nameInput"), clearAll: $("clearAll"),
     installPwaBtn: $("installPwaBtn")
   };
 
@@ -508,10 +501,6 @@
     try {
       var p = localStorage.getItem(PROFILE_KEY);
       if (p) state.profile = Object.assign({ name: "User", photo: "" }, JSON.parse(p));
-    } catch (e) {}
-    try {
-      var prov = localStorage.getItem(PROVIDER_KEY);
-      if (prov) state.providerPreference = prov;
     } catch (e) {}
   }
 
@@ -539,9 +528,6 @@
   function saveProfile() {
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile)); } catch (e) {}
   }
-  function saveProvider() {
-    try { localStorage.setItem(PROVIDER_KEY, state.providerPreference); } catch (e) {}
-  }
 
   /* ---------- PWA Installation ---------- */
   var deferredPrompt;
@@ -560,13 +546,13 @@
           deferredPrompt = null;
         });
       } else {
-        alert("PWA App Installation:\n\n• On Google Gemini / Chrome / Edge (PC/Mac):\nClick the install icon (🖥️ or +) in your browser address bar or open the browser menu (⋮) and select 'Install Vegas AI'.\n\n• On Mobile (Android/iOS):\nTap your browser menu (⋮ or Share) and select 'Add to Home Screen' or 'Install App'.\n\nOnce installed, you can use Vegas AI offline as a native desktop or mobile app!");
+        closeMenu();
+        showVoiceError("ایپ انسٹال کرنے کے لیے براؤزر کے مینو (⋮ یا Share) سے 'Install App' یا 'Add to Home Screen' منتخب کریں۔");
       }
     });
     window.addEventListener('appinstalled', function() {
       el.installPwaBtn.style.display = 'none';
     });
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
       el.installPwaBtn.style.display = 'none';
     }
@@ -737,7 +723,7 @@
         u.voice = chosenVoice;
         u.lang = chosenVoice.lang;
       } else {
-        u.lang = isU ? "ur-PK" : (navigator.language || "en-US");
+        u.lang = isU ? "ur-PK" : "en-US";
       }
       u.pitch = 1.08;
       u.rate = 1.0;
@@ -972,8 +958,15 @@
     }).join("");
 
     var actionsBlock = "";
-    if (m.role === "assistant") {
-      // Action icons (Copy, Listen, Download, Delete) ONLY under AI assistant responses
+    if (m.role === "user") {
+      // User messages: ONLY Copy and Delete icons (no Listen, no Download)
+      actionsBlock =
+        '<div class="msg-actions">' +
+        '<button type="button" class="msg-action-btn" data-action="copy-msg" title="کاپی / Copy" aria-label="Copy">' + icons.copy + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="delete-msg" title="ڈیلیٹ / Delete" aria-label="Delete">' + icons.delete + '</button>' +
+        '</div>';
+    } else if (m.role === "assistant") {
+      // AI assistant responses: Copy, Listen (speaker), Download, Delete icons (no text)
       var isPlaying = currentSpeakingIndex === idx;
       var speakerIcon = isPlaying ? icons.speakerStop : icons.speaker;
       var speakerTitle = isPlaying ? "روکیں / Stop" : "سنیں / Listen";
@@ -1016,7 +1009,8 @@
       var typ = document.createElement("div");
       typ.className = "typing";
       typ.id = "activeTypingIndicator";
-      typ.textContent = "Vegas AI is typing…";
+      typ.dir = "rtl";
+      typ.textContent = "Vegas AI ٹائپ کر رہا ہے…";
       el.messages.appendChild(typ);
     }
 
@@ -1190,7 +1184,8 @@
     var typIndicator = document.createElement("div");
     typIndicator.className = "typing";
     typIndicator.id = "activeTypingIndicator";
-    typIndicator.textContent = "Vegas AI is typing…";
+    typIndicator.dir = "rtl";
+    typIndicator.textContent = "Vegas AI ٹائپ کر رہا ہے…";
     el.messages.appendChild(typIndicator);
     el.thread.scrollTop = el.thread.scrollHeight;
 
@@ -1289,6 +1284,9 @@
   function autosize() {
     el.input.style.height = "auto";
     el.input.style.height = Math.min(el.input.scrollHeight, 180) + "px";
+    var isU = hasUrdu(el.input.value);
+    el.input.dir = isU ? "rtl" : "ltr";
+    el.input.style.textAlign = isU ? "right" : "left";
   }
 
   /* ---------- Drawer and features ---------- */
@@ -1309,7 +1307,6 @@
   /* ---------- Settings ---------- */
   function openSettings() {
     el.nameInput.value = state.profile.name || "";
-    if (el.providerSelect) el.providerSelect.value = state.providerPreference || "auto";
     applyTheme(currentThemeSetting());
     closeMenu();
     el.settingsModal.classList.add("show");
@@ -1326,12 +1323,6 @@
     state.profile.name = el.nameInput.value.trim() || "User";
     saveProfile(); renderProfile();
   });
-  if (el.providerSelect) {
-    el.providerSelect.addEventListener("change", function () {
-      state.providerPreference = el.providerSelect.value;
-      saveProvider();
-    });
-  }
   el.photoBtn.addEventListener("click", function () { el.photoInput.click(); });
   el.photoInput.addEventListener("change", function () {
     var f = el.photoInput.files && el.photoInput.files[0];
