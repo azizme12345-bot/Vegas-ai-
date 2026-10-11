@@ -67,7 +67,7 @@ async function startServer() {
   }
 
   const coreSystemPrompt =
-    "صارف جس زبان میں لکھے اسی زبان میں جواب دیں۔ اردو میں جواب دیتے وقت صاف، قدرتی اور جدید اردو استعمال کریں، اور جہاں تکنیکی یا عام انگریزی اصطلاحات (جیسے Environment Variables وغیرہ) موزوں ہوں انہیں قدرتی طور پر شامل کریں۔ اہم نکات کو بولڈ عنوان کے ساتھ (جیسے: **تیز رفتار ماڈل فال بیک:** اگر کسی ایک ماڈل پر جواب نہ ملے...) صاف، سیدھے اور مختصر انداز میں لکھیں۔";
+    "صارف جس زبان میں لکھے اسی زبان میں جواب دیں۔ اردو میں جواب دیتے وقت صاف، قدرتی اور جدید اردو استعمال کریں، اور جہاں تکنیکی یا عام انگریزی اصطلاحات (جیسے Environment Variables وغیرہ) موزوں ہوں انہیں قدرتی طور پر شامل کریں۔ اہم نکات کو بولڈ عنوان کے ساتھ (جیسے: **تیز رفتار ماڈل فال بیک:** اگر کسی ایک ماڈل پر جواب نہ ملے...) صاف، سیدھے اور مختصر انداز میں لکھیں۔ جب صارف کوئی پرامپٹ (Prompt) یا اسکرپٹ (Script) بنانے یا کاپی کرنے کا کہے، تو اسے صاف ستھرے کوڈ بلاک (```) کے اندر رکھیں تاکہ ٹاپ رائٹ کارنر پر کاپی بٹن ظاہر ہو۔";
 
   // Helper for Gemini chat stream (Optimized for <1s Time-To-First-Token)
   async function streamGeminiChat(
@@ -78,9 +78,9 @@ async function startServer() {
     if (!activeGemini) return { success: false, modelName: '' };
 
     const modelsToTry = [
+      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
       { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
-      { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite Preview' },
-      { id: 'gemini-flash-latest', name: 'Gemini Flash' },
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
     ];
 
@@ -514,20 +514,16 @@ async function startServer() {
           const modelsToTry =
             aiMode === 'deep'
               ? [
-                  { id: 'gemini-3.5-flash' },
                   { id: 'gemini-2.5-flash' },
-                  { id: 'gemini-3.1-flash-lite' },
-                  { id: 'gemini-3.5-flash-lite' },
+                  { id: 'gemini-3.5-flash' },
                   { id: 'gemini-2.5-flash-lite' },
-                  { id: 'gemini-3-flash-preview' },
+                  { id: 'gemini-3.1-flash-lite' },
                 ]
               : [
+                  { id: 'gemini-2.5-flash-lite' },
+                  { id: 'gemini-2.5-flash' },
                   { id: 'gemini-3.1-flash-lite' },
                   { id: 'gemini-3.5-flash-lite' },
-                  { id: 'gemini-2.5-flash-lite' },
-                  { id: 'gemini-3-flash-preview' },
-                  { id: 'gemini-3.5-flash' },
-                  { id: 'gemini-2.5-flash' },
                 ];
           for (const m of modelsToTry) {
             if (isModelExhausted(m.id)) continue;

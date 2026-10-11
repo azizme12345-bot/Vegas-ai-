@@ -1594,7 +1594,27 @@
   }
 
   function buildCodeBlockHtml(cb) {
-    var lang = cb.lang || "code";
+    var lang = (cb.lang || "code").toLowerCase();
+    var isPromptOrScript = lang === "prompt" || lang === "script" || lang === "markdown" || lang === "md" || lang === "text";
+    
+    if (isPromptOrScript || lang === "code" || !lang) {
+      var docIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>';
+      var titleLabel = lang === "script" ? "Script" : "Prompt";
+      var isU = hasUrdu(cb.code);
+      var dirAttr = isU ? 'dir="rtl"' : 'dir="ltr"';
+      var alignAttr = isU ? 'text-align:right;' : 'text-align:left;';
+
+      return '<div class="prompt-card" style="background:var(--surface);border:1px solid var(--line);border-radius:12px;margin:14px 0;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.18);">' +
+             '<div class="prompt-card-header" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.04);border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;color:var(--ink);">' +
+             '<div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-flex;align-items:center;color:var(--muted);">' + docIcon + '</span><span>' + titleLabel + '</span></div>' +
+             '<div style="display:flex;align-items:center;gap:6px;">' +
+             '<button type="button" class="code-copy" data-action="copy-prompt" title="Copy Prompt" style="display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;color:var(--ink);transition:background 0.15s;">' + icons.copy + ' <span>Copy</span></button>' +
+             '<button type="button" class="code-copy" data-action="share-prompt" title="Share Prompt" style="display:inline-flex;align-items:center;gap:4px;background:transparent;border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:12px;cursor:pointer;color:var(--ink);transition:background 0.15s;">' + icons.share + ' <span>Share</span></button>' +
+             '</div></div>' +
+             '<div class="prompt-card-body" style="padding:14px;max-height:480px;overflow-y:auto;"><pre ' + dirAttr + ' style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--font);font-size:14px;line-height:1.65;color:var(--ink);background:transparent;border:none;padding:0;' + alignAttr + '"><code>' +
+             escapeHtml(cb.code) + '</code></pre></div></div>';
+    }
+
     var isPreviewable = ["html", "htm", "svg", "xml", "javascript", "js", "css"].indexOf(lang) !== -1 || /<!doctype html|<html|<div|<style|<script|<svg/i.test(cb.code);
     var previewBtn = isPreviewable
       ? '<button type="button" class="code-copy" data-action="preview-code" data-lang="' + escapeHtml(lang) + '">Preview</button>'
@@ -2709,7 +2729,7 @@
   function resetMicUI() {
     listening = false;
     el.micBtn.classList.remove("on");
-    el.micBtn.setAttribute("title", "آواز سے لکھیں");
+    el.micBtn.setAttribute("title", "Start Listening (آواز سے لکھیں)");
     el.input.setAttribute("placeholder", "Message Vegas AI");
   }
 
@@ -2815,7 +2835,7 @@
       rec.onstart = function () {
         listening = true;
         el.micBtn.classList.add("on");
-        el.micBtn.setAttribute("title", "سن رہا ہے… روکنے کے لیے کلک کریں");
+        el.micBtn.setAttribute("title", "Stop Listening (ریکارڈنگ روکیں)");
         el.input.setAttribute("placeholder", "سن رہا ہے... بولیں");
       };
 
@@ -2910,7 +2930,7 @@
           mediaRecorder.start(250);
           listening = true;
           el.micBtn.classList.add("on");
-          el.micBtn.setAttribute("title", "سن رہا ہے… روکنے کے لیے کلک کریں");
+          el.micBtn.setAttribute("title", "Stop Listening (ریکارڈنگ روکیں)");
           el.input.setAttribute("placeholder", "سن رہا ہے... بولیں");
 
           // Start native SpeechRecognition in parallel on non-Android devices for live interim text
@@ -2918,45 +2938,9 @@
             try { rec.start(); } catch (e) {}
           }
 
-          // Automatic silence detection so recording stops naturally after user finishes speaking
-          try {
-            var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (AudioContextClass) {
-              audioCtx = new AudioContextClass();
-              var source = audioCtx.createMediaStreamSource(stream);
-              var analyser = audioCtx.createAnalyser();
-              analyser.fftSize = 512;
-              source.connect(analyser);
-              var dataArr = new Uint8Array(analyser.fftSize);
-              var hasSpoken = false;
-              var lastVoiceTime = Date.now();
-              var startTime = Date.now();
-
-              silenceTimer = setInterval(function () {
-                if (!listening) return;
-                analyser.getByteTimeDomainData(dataArr);
-                var sumSq = 0;
-                for (var i = 0; i < dataArr.length; i++) {
-                  var norm = (dataArr[i] - 128) / 128;
-                  sumSq += norm * norm;
-                }
-                var rms = Math.sqrt(sumSq / dataArr.length);
-                var now = Date.now();
-                if (rms > 0.022) {
-                  hasSpoken = true;
-                  lastVoiceTime = now;
-                } else if (hasSpoken && (now - lastVoiceTime > 950)) {
-                  stopVoiceInput();
-                } else if (!hasSpoken && (now - startTime > 8000)) {
-                  stopVoiceInput();
-                }
-              }, 80);
-            }
-          } catch (e) {}
-
           maxRecordTimer = setTimeout(function () {
             if (listening) stopVoiceInput();
-          }, 45000);
+          }, 120000);
         }).catch(function (err) {
           listening = false;
           el.micBtn.classList.remove("on");
@@ -3067,12 +3051,47 @@
       openCodePreview(previewDoc);
     }
     else if (action === "copy-code") {
-      var codeText = btn.closest("pre").querySelector("code").textContent;
+      var codeElem = btn.closest("pre").querySelector("code");
+      var codeText = codeElem ? codeElem.textContent : "";
       copyText(codeText).then(function () {
         var oldText = btn.textContent;
-        btn.textContent = "Copied";
-        setTimeout(function () { btn.textContent = oldText; }, 1200);
+        btn.textContent = "Copied successfully!";
+        setTimeout(function () { btn.textContent = oldText; }, 1500);
+      }).catch(function () {
+        showVoiceError("Failed to copy. Please try again.");
       });
+    }
+    else if (action === "copy-prompt") {
+      var cardElem = btn.closest(".prompt-card");
+      var codeElem = cardElem ? cardElem.querySelector("code") : null;
+      var promptText = codeElem ? codeElem.textContent : "";
+      copyText(promptText).then(function () {
+        var oldHtml = btn.innerHTML;
+        btn.innerHTML = '<span>Prompt copied!</span>';
+        setTimeout(function () { btn.innerHTML = oldHtml; }, 1800);
+      }).catch(function () {
+        showVoiceError("Failed to copy. Please try again.");
+      });
+    }
+    else if (action === "share-prompt") {
+      var cardElem = btn.closest(".prompt-card");
+      var codeElem = cardElem ? cardElem.querySelector("code") : null;
+      var promptText = codeElem ? codeElem.textContent : "";
+      if (navigator.share) {
+        navigator.share({ title: "AI Generated Prompt", text: promptText }).catch(function () {
+          copyText(promptText).then(function () {
+            var oldHtml = btn.innerHTML;
+            btn.innerHTML = '<span>Prompt copied!</span>';
+            setTimeout(function () { btn.innerHTML = oldHtml; }, 1800);
+          });
+        });
+      } else {
+        copyText(promptText).then(function () {
+          var oldHtml = btn.innerHTML;
+          btn.innerHTML = '<span>Prompt copied!</span>';
+          setTimeout(function () { btn.innerHTML = oldHtml; }, 1800);
+        });
+      }
     }
     else if (action === "download-code") {
       var codeElem = btn.closest("pre").querySelector("code");
