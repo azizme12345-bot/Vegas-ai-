@@ -19,8 +19,23 @@
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
+  @font-face {
+    font-family: 'Jameel Noori Nastaleeq';
+    src: url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Jameel-Noori-Nastaleeq.woff2') format('woff2'),
+         url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Jameel-Noori-Nastaleeq.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Mehr Nastaliq Web';
+    src: url('https://cdn.jsdelivr.net/npm/mehr-nastaliq-web@latest/fonts/MehrNastaliqWeb.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
   :root {
     --bg: #FAFAFA;
     --surface: #F0F0F0;
@@ -29,7 +44,18 @@
     --muted: #6E6E6E;
     --user: #E8E8E8;
     --on-ink: #FAFAFA;
-    --font: "Inter", "Noto Sans Arabic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
+    --font: "Google Sans", "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  [dir="rtl"] {
+    --font: "Noto Naskh Arabic", "Cairo", sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  :not([dir="rtl"]) {
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 16px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -58,10 +84,11 @@
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font);
-    font-size: 15px;
-    line-height: 1.75;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   button, textarea, input, select { font-family: var(--font); font-size: inherit; color: inherit; }
   button { cursor: pointer; background: none; border: 0; padding: 0; }
@@ -189,29 +216,37 @@
   .bubble {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    line-height: 1.75;
-    font-size: 15px;
+    line-height: 1.6;
+    font-size: 16px;
     direction: ltr;
     text-align: left;
     font-family: var(--font);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   .bubble[dir="rtl"] {
     direction: rtl;
     text-align: right;
+    line-height: 1.6;
+    font-family: var(--font);
+    font-weight: 400;
+    font-size: 16px;
   }
   .msg.user .bubble {
     background: var(--user);
     padding: 8px 14px;
     border-radius: 18px;
-    font-size: 15px;
-    line-height: 1.75;
+    font-size: 16px;
+    line-height: 1.6;
     max-width: 80%;
   }
   .msg.assistant .bubble {
     padding: 2px 0;
     max-width: 100%;
-    font-size: 15px;
-    line-height: 1.75;
+    font-size: 16px;
+    line-height: 1.6;
   }
 
   /* Action Buttons (Icon-only) */
@@ -282,7 +317,17 @@
   }
   .pill textarea {
     flex: 1; resize: none; border: 0; background: transparent;
-    padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 2; font-size: 15px; font-family: var(--font);
+    padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 1.6; font-size: 16px;
+    font-family: var(--font);
+    font-weight: 400;
+  }
+  .pill textarea[dir="rtl"] {
+    font-family: var(--font);
+    font-weight: 400;
+    line-height: 1.6;
+    font-size: 16px;
+    direction: rtl;
+    text-align: right;
   }
   .pill textarea:focus { outline: none; }
   .pill textarea::placeholder { color: var(--muted); }
@@ -649,7 +694,7 @@
           <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" hidden>
           <input type="file" id="fileInput" accept="*/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.ts,.py" multiple hidden>
           <input type="file" id="galleryInput" accept="image/*,video/*" multiple hidden>
-          <textarea id="input" rows="1" placeholder="Message Vegas AI" aria-label="Message"></textarea>
+          <textarea id="input" rows="1" placeholder="Reply to ChatGPT" aria-label="Message"></textarea>
           <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input (آواز سے لکھیں)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
           </button>
@@ -1569,7 +1614,9 @@
     regen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>',
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
     sendArrow: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
-    stopSquare: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
+    stopSquare: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+    thumbsUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>',
+    thumbsDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>'
   };
 
   function updateSendStopBtn() {
@@ -1704,7 +1751,8 @@
           inList = "ul";
         }
         var liStyle = liUrdu ? 'margin:4px 0;direction:rtl;text-align:right;' : 'margin:4px 0;direction:ltr;text-align:left;';
-        html += '<li dir="' + (liUrdu ? 'rtl' : 'ltr') + '" style="' + liStyle + '">' + inlineFormat(escapeHtml(ulMatch[1])) + '</li>';
+        var escapedLi = escapeHtml(ulMatch[1]).replace(/^([^\s:][^:\n]{1,35}:)\s+/, '<strong style="font-weight:700;">$1</strong> ');
+        html += '<li dir="' + (liUrdu ? 'rtl' : 'ltr') + '" style="' + liStyle + '">' + inlineFormat(escapedLi) + '</li>';
         continue;
       }
 
@@ -1718,7 +1766,8 @@
           inList = "ol";
         }
         var oliStyle = oliUrdu ? 'margin:4px 0;direction:rtl;text-align:right;' : 'margin:4px 0;direction:ltr;text-align:left;';
-        html += '<li dir="' + (oliUrdu ? 'rtl' : 'ltr') + '" style="' + oliStyle + '">' + inlineFormat(escapeHtml(olMatch[1])) + '</li>';
+        var escapedOli = escapeHtml(olMatch[1]).replace(/^([^\s:][^:\n]{1,35}:)\s+/, '<strong style="font-weight:700;">$1</strong> ');
+        html += '<li dir="' + (oliUrdu ? 'rtl' : 'ltr') + '" style="' + oliStyle + '">' + inlineFormat(escapedOli) + '</li>';
         continue;
       }
 
@@ -1742,7 +1791,8 @@
 
       var lineUrdu = hasUrdu(line);
       var pStyle = lineUrdu ? 'margin:4px 0; direction:rtl; text-align:right;' : 'margin:4px 0; direction:ltr; text-align:left;';
-      html += '<p dir="' + (lineUrdu ? 'rtl' : 'ltr') + '" style="' + pStyle + '">' + inlineFormat(escapeHtml(line)) + '</p>';
+      var escapedLine = escapeHtml(line).replace(/^([^\s:][^:\n]{1,35}:)\s+/, '<strong style="font-weight:700;">$1</strong> ');
+      html += '<p dir="' + (lineUrdu ? 'rtl' : 'ltr') + '" style="' + pStyle + '">' + inlineFormat(escapedLine) + '</p>';
     }
 
     if (inList) html += "</" + inList + ">";
@@ -1785,6 +1835,8 @@
       actionsBlock =
         '<div class="msg-actions">' +
         '<button type="button" class="msg-action-btn" data-action="copy-msg" title="کاپی / Copy" aria-label="Copy">' + icons.copy + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="thumb-up" title="مفید ہے / Helpful" aria-label="Helpful">' + icons.thumbsUp + '</button>' +
+        '<button type="button" class="msg-action-btn" data-action="thumb-down" title="بہتر نہیں / Not helpful" aria-label="Not helpful">' + icons.thumbsDown + '</button>' +
         '<button type="button" class="' + speakerClass + '" data-action="listen-msg" title="' + speakerTitle + '" aria-label="Listen">' + speakerIcon + '</button>' +
         '<button type="button" class="msg-action-btn" data-action="download-msg" title="ڈاؤن لوڈ / Download" aria-label="Download">' + icons.download + '</button>' +
         '<button type="button" class="msg-action-btn" data-action="share-msg" title="شیئر / Share" aria-label="Share">' + icons.share + '</button>' +
@@ -3027,6 +3079,14 @@
     else if (action === "edit-msg") editMessage(index);
     else if (action === "regen-msg") regenerateMessage(index);
     else if (action === "copy-msg" && m) copyText(m.text).then(function () { flashCopyIcon(btn); });
+    else if (action === "thumb-up") {
+      btn.classList.add("active");
+      setTimeout(function() { btn.classList.remove("active"); }, 1500);
+    }
+    else if (action === "thumb-down") {
+      btn.classList.add("active");
+      setTimeout(function() { btn.classList.remove("active"); }, 1500);
+    }
     else if (action === "listen-msg" && m) speak(m.text, index, btn);
     else if (action === "download-msg" && m) {
       downloadText("vegas-ai-reply.txt", m.text, "text/plain");
