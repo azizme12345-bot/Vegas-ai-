@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <rect width="500" height="500" fill="#0b0b0b" rx="100"/>
+  <!-- Outer concentric glowing circles and polygons -->
+  <circle cx="250" cy="250" r="210" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.85"/>
+  <circle cx="250" cy="250" r="170" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.6"/>
+  
+  <!-- Sacred geometry intersecting curves -->
+  <path d="M 250 40 Q 380 120 460 250 Q 380 380 250 460 Q 120 380 40 250 Q 120 120 250 40 Z" fill="none" stroke="#ffffff" stroke-width="2.5" opacity="0.75"/>
+  <path d="M 40 250 Q 120 380 250 460 Q 380 380 460 250 Q 380 120 250 40 Q 120 120 40 250 Z" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.5" transform="rotate(45 250 250)"/>
+  
+  <!-- Inner Neural Core / Cube -->
+  <g transform="translate(250, 250)">
+    <!-- Central cube framework -->
+    <polygon points="0,-75 65,-37.5 65,37.5 0,75 -65,37.5 -65,-37.5" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="0" y1="-75" x2="0" y2="75" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+    <line x1="-65" y1="-37.5" x2="65" y2="37.5" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+    <line x1="-65" y1="37.5" x2="65" y2="-37.5" stroke="#ffffff" stroke-width="2" opacity="0.8"/>
+    
+    <!-- Glowing nodes -->
+    <circle cx="0" cy="-75" r="7" fill="#ffffff"/>
+    <circle cx="65" cy="-37.5" r="6" fill="#ffffff"/>
+    <circle cx="65" cy="37.5" r="6" fill="#ffffff"/>
+    <circle cx="0" cy="75" r="7" fill="#ffffff"/>
+    <circle cx="-65" cy="37.5" r="6" fill="#ffffff"/>
+    <circle cx="-65" cy="-37.5" r="6" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="9" fill="#ffffff"/>
+    
+    <circle cx="32" cy="-18" r="4.5" fill="#ffffff"/>
+    <circle cx="-32" cy="-18" r="4.5" fill="#ffffff"/>
+    <circle cx="0" cy="37" r="4.5" fill="#ffffff"/>
+  </g>
+</svg>

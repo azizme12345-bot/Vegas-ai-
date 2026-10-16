@@ -67,6 +67,12 @@ async function startServer() {
   }
 
   const coreSystemPrompt =
+    "آپ ایک آل ان ون AI اسسٹنٹ ہیں۔ صارف جو بھی حکم دے، اسے براہ راست انجام دیں۔ " +
+    "اگر صارف تصویر بنانے کا کہے، تو براہ راست تصویر تیار کریں۔ کوئی بھی JSON کوڈ، ایکشن بلاک یا انگریزی پرامپٹ مت دکھائیں، صرف تصویر ہی فراہم کریں۔ " +
+    "اگر کوڈ لکھنے کا کہے، تو کوڈ لکھیں۔ " +
+    "اگر ترجمہ کا کہے، تو ترجمہ کریں۔ " +
+    "اگر کوئی سوال پوچھے، تو جواب دیں۔ " +
+    "صارف کو کسی مخصوص ٹول کے انتخاب کی ضرورت نہیں ہے۔" +
     "صارف جس زبان میں لکھے اسی زبان میں جواب دیں۔ اردو میں جواب دیتے وقت صاف، قدرتی اور جدید اردو استعمال کریں، اور جہاں تکنیکی یا عام انگریزی اصطلاحات (جیسے Environment Variables وغیرہ) موزوں ہوں انہیں قدرتی طور پر شامل کریں۔ اہم نکات کو بولڈ عنوان کے ساتھ (جیسے: **تیز رفتار ماڈل فال بیک:** اگر کسی ایک ماڈل پر جواب نہ ملے...) صاف، سیدھے اور مختصر انداز میں لکھیں۔ جب صارف کوئی پرامپٹ (Prompt) یا اسکرپٹ (Script) بنانے یا کاپی کرنے کا کہے، تو اسے صاف ستھرے کوڈ بلاک (```) کے اندر رکھیں تاکہ ٹاپ رائٹ کارنر پر کاپی بٹن ظاہر ہو۔";
 
   // Helper for Gemini chat stream (Optimized for <1s Time-To-First-Token)
@@ -400,7 +406,7 @@ async function startServer() {
       const lowerPrompt = latestUserText.toLowerCase();
       const isImgReq =
         lowerPrompt.startsWith('/image ') ||
-        /تصویر بنا|عکس بنا|تصویر کیجیے|تصویر بناؤ|تصویر بنائیں|پینٹنگ بنا|generate image|create image|generate an image|create an image|draw a |make an image|picture of |draw an image/i.test(
+        /تصویر بنا|عکس بنا|تصویر کیجیے|تصویر بناؤ|تصویر بنائیں|تصویر تیار|تصویر تخلیق|تصویر|پینٹنگ بنا|پینٹ کر|تصویر دکھاؤ|generate image|create image|generate an image|create an image|draw a |draw me a |make an image|make me a |create a |generate a |picture of |draw an image|show me an image|i want an image|image/i.test(
           lowerPrompt
         );
 
