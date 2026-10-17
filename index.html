@@ -662,10 +662,9 @@
       </button>
       <img src="/logo.jpg" alt="Logo" class="brand-logo" />
       <span class="brand">Vegas AI</span>
-      <div class="undo-group">
-        <button type="button" id="undoBtn" disabled>Undo</button>
-        <button type="button" id="redoBtn" disabled>Redo</button>
-      </div>
+      <button type="button" class="icon-btn" id="headerNewChatBtn" title="New Chat (نیا چیٹ)" aria-label="New chat">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
     </header>
 
     <section class="home" id="home">
@@ -714,10 +713,10 @@
               </button>
             </div>
           </div>
-          <input type="file" id="cameraInput" accept="image/*,video/*" capture="environment" hidden>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
           <input type="file" id="fileInput" accept="*/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.ts,.py" multiple hidden>
           <input type="file" id="galleryInput" accept="image/*,video/*" multiple hidden>
-          <textarea id="input" rows="1" placeholder="Reply to ChatGPT" aria-label="Message"></textarea>
+          <textarea id="input" rows="1" placeholder="Reply to Vegas AI" aria-label="Message"></textarea>
           <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input (آواز سے لکھیں)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
           </button>
@@ -1173,6 +1172,27 @@
       </div>
 
       <div class="field">
+        <span class="lbl">Voice & Speech (آواز کی ترتیبات)</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label for="voiceLangSelect" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Language (زبان)</label>
+            <select id="voiceLangSelect">
+              <option value="auto">Auto Detect (خودکار)</option>
+              <option value="ur">Urdu (اردو)</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div>
+            <label for="voiceGenderSelect" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Voice (آواز)</label>
+            <select id="voiceGenderSelect">
+              <option value="female">Female (زنانہ)</option>
+              <option value="male">Male (مردانہ)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
         <span class="lbl">AI Speed & Mode (ماڈل موڈ)</span>
         <div class="seg" style="grid-template-columns: 1fr 1fr 1fr;" role="group" aria-label="AI Mode">
           <button type="button" data-mode-set="fast" aria-pressed="true">Fast</button>
@@ -1279,7 +1299,9 @@
       customInstructions: "",
       saveHistory: true,
       pinCode: "",
-      totalRequests: 0
+      totalRequests: 0,
+      voiceLang: "auto",
+      voiceGender: "female"
     }
   };
   var undoStack = [], redoStack = [];
@@ -1302,11 +1324,12 @@
     menuImgGenBtn: $("menuImgGenBtn"), menuPromptBtn: $("menuPromptBtn"),
     cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
     attachments: $("attachments"),
-    micBtn: $("micBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
+    micBtn: $("micBtn"), headerNewChatBtn: $("headerNewChatBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
     settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
     nameInput: $("nameInput"), customInstInput: $("customInstInput"), quickToolSelect: $("quickToolSelect"),
+    voiceLangSelect: $("voiceLangSelect"), voiceGenderSelect: $("voiceGenderSelect"),
     usageStatsText: $("usageStatsText"), exportChatBtn: $("exportChatBtn"), exportAllBtn: $("exportAllBtn"),
     privacyToggleBtn: $("privacyToggleBtn"), pinLockBtn: $("pinLockBtn"), feedbackBtn: $("feedbackBtn"),
     clearAll: $("clearAll"), installPwaBtn: $("installPwaBtn"),
@@ -1523,32 +1546,43 @@
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      var isU = hasUrdu(text);
+      var langPref = state.prefs.voiceLang || "auto";
+      var genderPref = state.prefs.voiceGender || "female";
+      var isU = langPref === "ur" || (langPref === "auto" && hasUrdu(text));
       var voices = availableVoices.length ? availableVoices : (window.speechSynthesis.getVoices() || []);
 
+      var langVoices = voices.filter(function (v) {
+        var l = (v.lang || "").toLowerCase();
+        return isU ? (l.indexOf("ur") !== -1 || l.indexOf("hi") !== -1) : l.indexOf("en") !== -1;
+      });
+      if (!langVoices.length) langVoices = voices;
+
       var chosenVoice = null;
-      if (isU) {
-        chosenVoice = voices.find(function (v) {
-          var l = (v.lang || "").toLowerCase();
-          return l.indexOf("ur") !== -1 || l.indexOf("hi") !== -1;
-        });
-      }
-      if (!chosenVoice) {
-        chosenVoice = voices.find(function (v) {
+      if (genderPref === "male") {
+        chosenVoice = langVoices.find(function (v) {
           var name = (v.name || "").toLowerCase();
-          return (name.indexOf("female") !== -1 || name.indexOf("zira") !== -1 ||
-                  name.indexOf("aria") !== -1 || name.indexOf("samantha") !== -1 ||
-                  name.indexOf("karen") !== -1 || name.indexOf("victoria") !== -1 ||
-                  name.indexOf("google") !== -1 || name.indexOf("natural") !== -1);
+          return name.indexOf("male") !== -1 || name.indexOf("david") !== -1 || name.indexOf("daniel") !== -1 ||
+                 name.indexOf("george") !== -1 || name.indexOf("guy") !== -1 || name.indexOf("mark") !== -1 ||
+                 name.indexOf("ravi") !== -1;
+        });
+      } else {
+        chosenVoice = langVoices.find(function (v) {
+          var name = (v.name || "").toLowerCase();
+          return name.indexOf("female") !== -1 || name.indexOf("zira") !== -1 || name.indexOf("aria") !== -1 ||
+                 name.indexOf("samantha") !== -1 || name.indexOf("karen") !== -1 || name.indexOf("victoria") !== -1 ||
+                 name.indexOf("swara") !== -1 || name.indexOf("google") !== -1 || name.indexOf("natural") !== -1;
         });
       }
+
+      if (!chosenVoice && langVoices.length) chosenVoice = langVoices[0];
+
       if (chosenVoice) {
         u.voice = chosenVoice;
         u.lang = chosenVoice.lang;
       } else {
         u.lang = isU ? "ur-PK" : "en-US";
       }
-      u.pitch = 1.08;
+      u.pitch = genderPref === "male" ? 0.95 : 1.05;
       u.rate = 1.0;
 
       u.onend = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
@@ -1976,8 +2010,8 @@
   }
 
   function updateUndoButtons() {
-    el.undoBtn.disabled = undoStack.length === 0;
-    el.redoBtn.disabled = redoStack.length === 0;
+    if (el.undoBtn) el.undoBtn.disabled = undoStack.length === 0;
+    if (el.redoBtn) el.redoBtn.disabled = redoStack.length === 0;
   }
 
   function avatarHtml(size) {
@@ -2097,6 +2131,26 @@
     }
   }
 
+  /* ---------- Global Notification Toast ---------- */
+  function showToast(msg) {
+    if (!msg) return;
+    var toast = $("globalAppToast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "globalAppToast";
+      toast.style.cssText = "position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--ink);color:var(--on-ink);padding:8px 16px;border-radius:20px;font-size:13.5px;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,0.22);display:flex;align-items:center;gap:8px;pointer-events:none;transition:opacity 0.25s ease;";
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = "1";
+    toast.hidden = false;
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function () {
+      toast.style.opacity = "0";
+      setTimeout(function () { toast.hidden = true; }, 300);
+    }, 3500);
+  }
+
   /* ---------- AI Calls (Multi-Turn, Multimodal, Stop-Capable) ---------- */
   async function triggerAiReplyForCurrentChat() {
     var c = current();
@@ -2143,6 +2197,10 @@
         })
       });
 
+      var switchNotice = res.headers.get("x-model-switch");
+      if (switchNotice) showToast(switchNotice);
+      if (res.status === 429) showToast("Switching to backup model...");
+
       var contentType = (res.headers.get("content-type") || "").toLowerCase();
       if (contentType.indexOf("text/event-stream") !== -1 && res.body && res.body.getReader) {
         if (typIndicator.parentNode) typIndicator.remove();
@@ -2171,6 +2229,9 @@
             if (payload === "[DONE]") break;
             try {
               var parsed = JSON.parse(payload);
+              if (parsed && parsed.notice) {
+                showToast(parsed.notice);
+              }
               if (parsed && parsed.text) {
                 assistantMsg.text += parsed.text;
               }
@@ -2335,6 +2396,8 @@
       b.setAttribute("aria-pressed", String(b.getAttribute("data-len-set") === (state.prefs.responseLength || "balanced")));
     });
     if (el.customInstInput) el.customInstInput.value = state.prefs.customInstructions || "";
+    if (el.voiceLangSelect) el.voiceLangSelect.value = state.prefs.voiceLang || "auto";
+    if (el.voiceGenderSelect) el.voiceGenderSelect.value = state.prefs.voiceGender || "female";
     if (el.privacyToggleBtn) {
       el.privacyToggleBtn.textContent = state.prefs.saveHistory ? "Save History: ON" : "Incognito (Don't Save): ON";
     }
@@ -2366,6 +2429,18 @@
   if (el.customInstInput) {
     el.customInstInput.addEventListener("input", function () {
       state.prefs.customInstructions = el.customInstInput.value;
+      savePrefs();
+    });
+  }
+  if (el.voiceLangSelect) {
+    el.voiceLangSelect.addEventListener("change", function () {
+      state.prefs.voiceLang = el.voiceLangSelect.value;
+      savePrefs();
+    });
+  }
+  if (el.voiceGenderSelect) {
+    el.voiceGenderSelect.addEventListener("change", function () {
+      state.prefs.voiceGender = el.voiceGenderSelect.value;
       savePrefs();
     });
   }
@@ -2796,7 +2871,7 @@
     clearTimeout(toast._timer);
     toast._timer = setTimeout(function () {
       toast.hidden = true;
-      el.input.setAttribute("placeholder", "Message Vegas AI");
+      el.input.setAttribute("placeholder", "Reply to Vegas AI");
       if (Rec || hasMediaMic) el.micBtn.setAttribute("title", "آواز سے لکھیں");
     }, 4500);
   }
@@ -2805,7 +2880,7 @@
     listening = false;
     el.micBtn.classList.remove("on");
     el.micBtn.setAttribute("title", "Start Listening (آواز سے لکھیں)");
-    el.input.setAttribute("placeholder", "Message Vegas AI");
+    el.input.setAttribute("placeholder", "Reply to Vegas AI");
   }
 
   function cleanupAudioMonitors() {
@@ -3044,8 +3119,9 @@
   el.input.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
   });
-  el.undoBtn.addEventListener("click", undo);
-  el.redoBtn.addEventListener("click", redo);
+  if (el.headerNewChatBtn) el.headerNewChatBtn.addEventListener("click", newChat);
+  if (el.undoBtn) el.undoBtn.addEventListener("click", undo);
+  if (el.redoBtn) el.redoBtn.addEventListener("click", redo);
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {

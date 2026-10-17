@@ -83,10 +83,10 @@ async function startServer() {
     if (!activeGemini) return { success: false, modelName: '' };
 
     const modelsToTry = [
-      { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
-      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-      { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
-      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
     ];
 
     for (const m of modelsToTry) {
@@ -516,25 +516,23 @@ async function startServer() {
 
       for (const provider of order) {
         if (provider === 'gemini' && activeGemini) {
-          const modelsToTry =
+          const models =
             aiMode === 'deep'
-              ? [
-                  { id: 'gemini-2.5-flash' },
-                  { id: 'gemini-3.5-flash' },
-                  { id: 'gemini-2.5-flash-lite' },
-                  { id: 'gemini-3.1-flash-lite' },
-                ]
-              : [
-                  { id: 'gemini-2.5-flash-lite' },
-                  { id: 'gemini-2.5-flash' },
-                  { id: 'gemini-3.1-flash-lite' },
-                  { id: 'gemini-3.5-flash-lite' },
-                ];
-          for (const m of modelsToTry) {
-            if (isModelExhausted(m.id)) continue;
+              ? ['gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
+              : ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'];
+          let attemptCount = 0;
+          for (const modelId of models) {
+            if (isModelExhausted(modelId)) continue;
             try {
+              if (attemptCount > 0) {
+                if (headersSentForStream) {
+                  res.write(`data: ${JSON.stringify({ notice: "Switching to backup model..." })}\n\n`);
+                } else if (!res.headersSent) {
+                  res.setHeader('X-Model-Switch', 'Switching to backup model...');
+                }
+              }
               const stream = await activeGemini.models.generateContentStream({
-                model: m.id,
+                model: modelId,
                 contents: geminiContents,
                 config: {
                   systemInstruction: systemPrompt,
@@ -576,9 +574,10 @@ async function startServer() {
                 msg.includes('RESOURCE_EXHAUSTED') ||
                 msg.includes('quota')
               ) {
-                markModelExhausted(m.id, 60 * 60 * 1000);
+                markModelExhausted(modelId, 60 * 60 * 1000);
               }
               if (headersSentForStream) break;
+              attemptCount++;
             }
           }
           if (success) break;
