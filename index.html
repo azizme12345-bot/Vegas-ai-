@@ -1753,7 +1753,7 @@
   /* ---------- Natural Young Female Voice Engine (~20-25 yrs) ---------- */
   function getYoungFemaleVoice(isUrdu) {
     if (!("speechSynthesis" in window)) return null;
-    var voices = availableVoices.length ? availableVoices : (window.speechSynthesis.getVoices() || []);
+    var voices = (window.speechSynthesis.getVoices() || []).concat(availableVoices);
     if (!voices.length) return null;
 
     if (isUrdu) {
@@ -1766,7 +1766,7 @@
         var m = urVoices.find(function (v) { return urPriorities[i].test(v.name); });
         if (m) return m;
       }
-      return urVoices[0] || null;
+      return urVoices[0] || voices.find(function(v){ return (v.lang||"").toLowerCase().indexOf("ur") !== -1; }) || voices[0] || null;
     } else {
       var enVoices = voices.filter(function (v) {
         return (v.lang || "").toLowerCase().indexOf("en") !== -1;
@@ -1780,7 +1780,7 @@
         var match = enVoices.find(function (v) { return enPriorities[j].test(v.name); });
         if (match) return match;
       }
-      return enVoices[0] || null;
+      return enVoices[0] || voices[0] || null;
     }
   }
 
@@ -1799,7 +1799,7 @@
 
       if (voice) {
         u.voice = voice;
-        u.lang = voice.lang;
+        // Do not force u.lang if u.voice is set, as it might conflict
       } else {
         u.lang = isU ? "ur-PK" : "en-US";
       }
