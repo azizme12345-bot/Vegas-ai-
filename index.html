@@ -21,27 +21,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-  /* Loading Overlay */
-  .loading-overlay {
-    position: fixed; inset: 0; z-index: 100;
-    background: rgba(0,0,0,0.8);
-    display: none; align-items: center; justify-content: center;
-  }
-  .loading-overlay.show { display: flex; }
-  .logo-loader {
-    width: 80px; height: 80px;
-    background: url('/logo.jpg') center/contain no-repeat;
-    animation: steppedSpin 2s infinite;
-  }
-  @keyframes steppedSpin {
-    0% { transform: rotate(0deg); }
-    10% { transform: rotate(90deg); }
-    40% { transform: rotate(90deg); }
-    50% { transform: rotate(180deg); }
-    80% { transform: rotate(180deg); }
-    90% { transform: rotate(270deg); }
-    100% { transform: rotate(360deg); }
-  }
   @font-face {
     font-family: 'Jameel Noori Nastaleeq';
     src: url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/Jameel-Noori-Nastaleeq.woff2') format('woff2'),
@@ -661,14 +640,14 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <img src="/logo.jpg" alt="Logo" class="brand-logo" />
-      <span class="brand">Vegas AI</span>
+      <span class="brand" id="brandText">Vegas AI</span>
       <button type="button" class="icon-btn" id="headerNewChatBtn" title="New Chat (نیا چیٹ)" aria-label="New chat">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       </button>
     </header>
 
     <section class="home" id="home">
-      <h1>How can I help you?</h1>
+      <h1 id="homeHeading">How can I help you?</h1>
     </section>
 
     <section class="thread" id="thread" hidden>
@@ -685,31 +664,35 @@
             <div class="attach-menu" id="attachMenu" role="menu">
               <button type="button" class="attach-menu-item" id="menuCameraBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <span>Camera (کیمرہ)</span>
+                <span id="menuCameraText">Camera (کیمرہ)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuFilesBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <span>Files & PDF (فائلز)</span>
+                <span id="menuFilesText">Files & PDF (فائلز)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuGalleryBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span>Gallery (گیلری)</span>
+                <span id="menuGalleryText">Gallery (گیلری)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuImgGenBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-                <span>AI Image Generator (تصویر بنائیں)</span>
+                <span id="menuImgGenText">AI Image Generator (تصویر بنائیں)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuPhotoEditBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                <span>AI Photo Editor (فوٹو ایڈیٹنگ)</span>
+                <span id="menuPhotoEditText">AI Photo Editor (فوٹو ایڈیٹنگ)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuUiStudioBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-                <span>UI Design Studio (ڈیزائن اسٹوڈیو)</span>
+                <span id="menuUiStudioText">UI Design Studio (ڈیزائن اسٹوڈیو)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuPromptBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span>AI Tools (سمارٹ ٹولز)</span>
+                <span id="menuPromptText">AI Tools (سمارٹ ٹولز)</span>
+              </button>
+              <button type="button" class="attach-menu-item" id="menuLangSwitchBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span id="menuLangText">زبان / Language (اردو / English)</span>
               </button>
             </div>
           </div>
@@ -1164,7 +1147,7 @@
       </div>
 
       <div class="field">
-        <span class="lbl">Appearance</span>
+        <span class="lbl" id="lblAppearance">Appearance (تھیم)</span>
         <div class="seg" role="group" aria-label="Theme">
           <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
           <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
@@ -1172,10 +1155,18 @@
       </div>
 
       <div class="field">
-        <span class="lbl">Voice & Speech (آواز کی ترتیبات)</span>
+        <span class="lbl" id="lblUiLang">UI Language (انٹرفیس کی زبان)</span>
+        <div class="seg" role="group" aria-label="UI Language">
+          <button type="button" id="langSetUrdu" data-lang-set="ur" aria-pressed="false">اردو (Urdu)</button>
+          <button type="button" id="langSetEnglish" data-lang-set="en" aria-pressed="false">English</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl" id="lblVoiceSpeech">Voice & Speech (آواز کی ترتیبات)</span>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
           <div>
-            <label for="voiceLangSelect" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Language (زبان)</label>
+            <label for="voiceLangSelect" id="lblVoiceLang" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Language (زبان)</label>
             <select id="voiceLangSelect">
               <option value="auto">Auto Detect (خودکار)</option>
               <option value="ur">Urdu (اردو)</option>
@@ -1183,9 +1174,9 @@
             </select>
           </div>
           <div>
-            <label for="voiceGenderSelect" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Voice (آواز)</label>
+            <label for="voiceGenderSelect" id="lblVoiceGender" style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Voice (آواز)</label>
             <select id="voiceGenderSelect">
-              <option value="female">Female (زنانہ)</option>
+              <option value="female">Young Female (~20–25 yrs)</option>
               <option value="male">Male (مردانہ)</option>
             </select>
           </div>
@@ -1283,15 +1274,164 @@
   var THEME_KEY = "vegas-ai-theme";
   var PROFILE_KEY = "vegas-ai-profile";
   var PREFS_KEY = "vegas-ai-prefs";
+  var LANG_KEY = "vegas-ai-lang";
 
   var API_CHAT_URL = "/api/chat";
   var API_IMAGE_URL = "/api/image";
   var API_TTS_URL = "/api/tts";
   var API_TRANSCRIBE_URL = "/api/transcribe";
 
+  var I18N = {
+    en: {
+      appName: "Vegas AI",
+      homeTitle: "How can I help you?",
+      placeholder: "Reply to Vegas AI",
+      newChat: "New chat",
+      uiStudio: "UI Design Studio",
+      photoStudio: "AI Image & Photo Studio",
+      installApp: "Install App",
+      history: "History",
+      searchChats: "Search chats...",
+      settings: "Settings",
+      camera: "Camera",
+      files: "Files & PDF",
+      gallery: "Gallery",
+      imageGen: "AI Image Generator",
+      photoEdit: "AI Photo Editor",
+      smartTools: "AI Tools",
+      langMenu: "Language: English",
+      profilePhoto: "Profile photo",
+      changePhoto: "Change photo",
+      name: "Name",
+      appearance: "Appearance",
+      uiLang: "UI Language",
+      voiceSpeech: "Voice & Speech",
+      langSelect: "Language",
+      voiceSelect: "Voice",
+      autoDetect: "Auto Detect",
+      urduLang: "Urdu (اردو)",
+      englishLang: "English",
+      youngFemaleVoice: "Young Female (~20–25 yrs)",
+      maleVoice: "Male",
+      aiSpeed: "AI Speed & Mode",
+      fast: "Fast",
+      balanced: "Balanced",
+      deep: "Deep",
+      respLen: "Response Length",
+      short: "Short",
+      detailed: "Detailed",
+      customInst: "Custom AI Instructions",
+      customInstPlace: "e.g. Always explain step-by-step...",
+      allInOneTools: "All-in-One AI Assistant Tools",
+      toolSelectPlaceholder: "Select a quick AI tool...",
+      usageStats: "Messages: {msg} | Est. Tokens: {tok} | Status: Active",
+      privacyExport: "Privacy, Export & Security",
+      exportTxt: "Export Chat (.txt)",
+      exportJson: "Export All (.json)",
+      historyOn: "Save History: ON",
+      historyOff: "Incognito: ON",
+      setPin: "Set PIN Lock",
+      changePin: "Change / Clear PIN",
+      shortcutsLabel: "Keyboard Shortcuts",
+      shortcutsText: "Enter: Send • Shift+Enter: New Line • Ctrl+K: New Chat • Esc: Stop AI",
+      feedbackLabel: "Feedback & Chats",
+      feedbackBtn: "Send Feedback / Report",
+      deleteChats: "Delete all chats",
+      typing: "Vegas AI is typing...",
+      stoppedText: "Generation stopped.",
+      noReply: "Sorry, no response received.",
+      voiceListening: "Listening...",
+      voiceInputTitle: "Voice input",
+      sendTitle: "Send",
+      stopTitle: "Stop",
+      listenTitle: "Listen",
+      stopListenTitle: "Stop",
+      copyTitle: "Copy",
+      copiedTitle: "Copied",
+      editTitle: "Edit",
+      regenTitle: "Regenerate",
+      shareTitle: "Share",
+      deleteTitle: "Delete",
+      backupModelToast: "Switching to backup model..."
+    },
+    ur: {
+      appName: "ویگس اے آئی",
+      homeTitle: "میں آپ کی کیا مدد کر سکتا ہوں؟",
+      placeholder: "ویگس اے آئی کو جواب دیں…",
+      newChat: "نیا چیٹ",
+      uiStudio: "ڈیزائن اسٹوڈیو",
+      photoStudio: "تصویر و فوٹو اسٹوڈیو",
+      installApp: "ایپ انسٹال کریں",
+      history: "ہسٹری",
+      searchChats: "چیٹس تلاش کریں…",
+      settings: "سیٹنگز",
+      camera: "کیمرہ",
+      files: "فائلز اور پی ڈی ایف",
+      gallery: "گیلری",
+      imageGen: "تصویر بنائیں (AI)",
+      photoEdit: "فوٹو ایڈیٹر",
+      smartTools: "سمارٹ ٹولز",
+      langMenu: "زبان: اردو",
+      profilePhoto: "پروفائل تصویر",
+      changePhoto: "تصویر تبدیل کریں",
+      name: "نام",
+      appearance: "تھیم / رنگت",
+      uiLang: "انٹرفیس کی زبان",
+      voiceSpeech: "آواز کی ترتیبات",
+      langSelect: "زبان",
+      voiceSelect: "آواز",
+      autoDetect: "خودکار انتخاب",
+      urduLang: "اردو",
+      englishLang: "English",
+      youngFemaleVoice: "نوجوان زنانہ (~20–25 سال)",
+      maleVoice: "مردانہ آواز",
+      aiSpeed: "ماڈل کی رفتار",
+      fast: "تیز",
+      balanced: "متوازن",
+      deep: "گہرا",
+      respLen: "جواب کی طوالت",
+      short: "مختصر",
+      detailed: "تفصیلی",
+      customInst: "خصوصی ہدایات",
+      customInstPlace: "مثلاً: ہمیشہ مرحلہ وار اردو میں سمجھائیں…",
+      allInOneTools: "تمام AI ٹولز",
+      toolSelectPlaceholder: "کوئی فوری AI ٹول منتخب کریں…",
+      usageStats: "پیغامات: {msg} | ٹوکنز: {tok} | اسٹیٹس: فعال",
+      privacyExport: "پرائیویسی اور ایکسپورٹ",
+      exportTxt: "چیٹ ایکسپورٹ کریں (.txt)",
+      exportJson: "تمام ڈیٹا محفوظ کریں (.json)",
+      historyOn: "ہسٹری محفوظ: آن",
+      historyOff: "خفیہ موڈ: آن",
+      setPin: "پن کوڈ لگائیں",
+      changePin: "پن تبدیل / ختم کریں",
+      shortcutsLabel: "شارٹ کٹس",
+      shortcutsText: "انٹر: بھیجیں • شفٹ+انٹر: نئی لائن • کنٹرول+K: نیا چیٹ • Esc: روکیں",
+      feedbackLabel: "رپورٹ و فیڈ بیک",
+      feedbackBtn: "فیڈ بیک / رپورٹ بھیجیں",
+      deleteChats: "تمام چیٹس ڈیلیٹ کریں",
+      typing: "Vegas AI ٹائپ کر رہا ہے…",
+      stoppedText: "جواب روک دیا گیا۔",
+      noReply: "معذرت، کوئی جواب موصول نہیں ہوا۔",
+      voiceListening: "سن رہا ہے…",
+      voiceInputTitle: "آواز سے لکھیں",
+      sendTitle: "بھیجیں",
+      stopTitle: "روکیں",
+      listenTitle: "سنیں",
+      stopListenTitle: "روکیں",
+      copyTitle: "کاپی کریں",
+      copiedTitle: "کاپی ہو گیا",
+      editTitle: "ترمیم کریں",
+      regenTitle: "دوبارہ لکھیں",
+      shareTitle: "شیئر کریں",
+      deleteTitle: "ڈیلیٹ کریں",
+      backupModelToast: "بیک اپ ماڈل پر سوئچ کیا جا رہا ہے…"
+    }
+  };
+
   var state = {
     chats: [],
     currentId: null,
+    lang: "ur",
     profile: { name: "User", photo: "" },
     prefs: {
       aiMode: "fast",
@@ -1321,15 +1461,17 @@
     composer: $("composer"), input: $("input"), sendBtn: $("sendBtn"),
     attachWrap: $("attachWrap"), attachBtn: $("attachBtn"), attachMenu: $("attachMenu"),
     menuCameraBtn: $("menuCameraBtn"), menuFilesBtn: $("menuFilesBtn"), menuGalleryBtn: $("menuGalleryBtn"),
-    menuImgGenBtn: $("menuImgGenBtn"), menuPromptBtn: $("menuPromptBtn"),
+    menuImgGenBtn: $("menuImgGenBtn"), menuPromptBtn: $("menuPromptBtn"), menuLangSwitchBtn: $("menuLangSwitchBtn"),
     cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
     attachments: $("attachments"),
+    brandText: $("brandText"), homeHeading: $("homeHeading"),
     micBtn: $("micBtn"), headerNewChatBtn: $("headerNewChatBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
     settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
     nameInput: $("nameInput"), customInstInput: $("customInstInput"), quickToolSelect: $("quickToolSelect"),
     voiceLangSelect: $("voiceLangSelect"), voiceGenderSelect: $("voiceGenderSelect"),
+    langSetUrdu: $("langSetUrdu"), langSetEnglish: $("langSetEnglish"),
     usageStatsText: $("usageStatsText"), exportChatBtn: $("exportChatBtn"), exportAllBtn: $("exportAllBtn"),
     privacyToggleBtn: $("privacyToggleBtn"), pinLockBtn: $("pinLockBtn"), feedbackBtn: $("feedbackBtn"),
     clearAll: $("clearAll"), installPwaBtn: $("installPwaBtn"),
@@ -1343,6 +1485,10 @@
       var raw = localStorage.getItem(KEY);
       if (raw) state.chats = JSON.parse(raw) || [];
     } catch (e) { state.chats = []; }
+    try {
+      var l = localStorage.getItem(LANG_KEY);
+      state.lang = l === "en" || l === "ur" ? l : "ur";
+    } catch (e) { state.lang = "ur"; }
     try {
       var p = localStorage.getItem(PROFILE_KEY);
       if (p) state.profile = Object.assign({ name: "User", photo: "" }, JSON.parse(p));
@@ -1381,6 +1527,74 @@
 
   function saveProfile() {
     try { localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile)); } catch (e) {}
+  }
+
+  /* ---------- Language Switcher (Urdu / English) ---------- */
+  function applyLanguage(lang) {
+    if (lang !== "en" && lang !== "ur") lang = "ur";
+    state.lang = lang;
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) {}
+
+    var t = I18N[lang] || I18N.ur;
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ur" ? "rtl" : "ltr";
+    document.body.setAttribute("data-lang", lang);
+
+    // Header & Home
+    if (el.brandText) el.brandText.textContent = t.appName;
+    if (el.homeHeading) el.homeHeading.textContent = t.homeTitle;
+
+    // Composer Input
+    if (el.input) {
+      el.input.setAttribute("placeholder", t.placeholder);
+      el.input.dir = lang === "ur" ? "rtl" : "ltr";
+    }
+
+    // Attach menu items
+    var mc = $("menuCameraText"); if (mc) mc.textContent = t.camera;
+    var mf = $("menuFilesText"); if (mf) mf.textContent = t.files;
+    var mg = $("menuGalleryText"); if (mg) mg.textContent = t.gallery;
+    var mi = $("menuImgGenText"); if (mi) mi.textContent = t.imageGen;
+    var mp = $("menuPhotoEditText"); if (mp) mp.textContent = t.photoEdit;
+    var mu = $("menuUiStudioText"); if (mu) mu.textContent = t.uiStudio;
+    var mt = $("menuPromptText"); if (mt) mt.textContent = t.smartTools;
+    var ml = $("menuLangText"); if (ml) ml.textContent = t.langMenu;
+
+    // Sidebar items
+    var sNew = $("newChatBtn");
+    if (sNew && sNew.lastChild) sNew.lastChild.textContent = " " + t.newChat;
+    var sUi = $("openUiStudioBtn");
+    if (sUi && sUi.lastChild) sUi.lastChild.textContent = " " + t.uiStudio;
+    var sImg = $("sidebarImageStudioBtn");
+    if (sImg && sImg.lastChild) sImg.lastChild.textContent = " " + t.photoStudio;
+    var sInst = $("installPwaBtn");
+    if (sInst && sInst.lastChild) sInst.lastChild.textContent = " " + t.installApp;
+    var sHist = document.querySelector(".side-label");
+    if (sHist) sHist.textContent = t.history;
+    if (el.searchInput) el.searchInput.setAttribute("placeholder", t.searchChats);
+    if (el.settingsBtn) el.settingsBtn.textContent = t.settings;
+
+    // Control buttons titles
+    if (el.headerNewChatBtn) el.headerNewChatBtn.setAttribute("title", t.newChat);
+    if (el.sendBtn) el.sendBtn.setAttribute("title", t.sendTitle);
+    if (el.micBtn) el.micBtn.setAttribute("title", t.voiceInputTitle);
+
+    // Settings modal labels
+    var sTitle = $("settingsTitle"); if (sTitle) sTitle.textContent = t.settings;
+    var lblApp = $("lblAppearance"); if (lblApp) lblApp.textContent = t.appearance;
+    var lblLang = $("lblUiLang"); if (lblLang) lblLang.textContent = t.uiLang;
+    var lblVS = $("lblVoiceSpeech"); if (lblVS) lblVS.textContent = t.voiceSpeech;
+    var lblVL = $("lblVoiceLang"); if (lblVL) lblVL.textContent = t.langSelect;
+    var lblVG = $("lblVoiceGender"); if (lblVG) lblVG.textContent = t.voiceSelect;
+    var cInst = $("customInstInput"); if (cInst) cInst.setAttribute("placeholder", t.customInstPlace);
+    var clrBtn = $("clearAll"); if (clrBtn) clrBtn.textContent = t.deleteChats;
+    var fbBtn = $("feedbackBtn"); if (fbBtn) fbBtn.textContent = t.feedbackBtn;
+
+    // Sync segmented buttons for lang
+    if (el.langSetUrdu) el.langSetUrdu.setAttribute("aria-pressed", String(lang === "ur"));
+    if (el.langSetEnglish) el.langSetEnglish.setAttribute("aria-pressed", String(lang === "en"));
+
+    renderHistory();
   }
 
   /* ---------- PWA Installation ---------- */
@@ -1536,7 +1750,41 @@
     }).catch(function () {});
   }
 
-  function fallbackSpeechSynth(text, index, btn) {
+  /* ---------- Natural Young Female Voice Engine (~20-25 yrs) ---------- */
+  function getYoungFemaleVoice(isUrdu) {
+    if (!("speechSynthesis" in window)) return null;
+    var voices = availableVoices.length ? availableVoices : (window.speechSynthesis.getVoices() || []);
+    if (!voices.length) return null;
+
+    if (isUrdu) {
+      var urVoices = voices.filter(function (v) {
+        var l = (v.lang || "").toLowerCase();
+        return l.indexOf("ur") !== -1 || l.indexOf("hi") !== -1;
+      });
+      var urPriorities = [/swara/i, /kalpana/i, /asma/i, /heera/i, /ananya/i, /google.*urdu/i, /google.*hindi/i, /female/i, /natural/i];
+      for (var i = 0; i < urPriorities.length; i++) {
+        var m = urVoices.find(function (v) { return urPriorities[i].test(v.name); });
+        if (m) return m;
+      }
+      return urVoices[0] || null;
+    } else {
+      var enVoices = voices.filter(function (v) {
+        return (v.lang || "").toLowerCase().indexOf("en") !== -1;
+      });
+      var enPriorities = [
+        /jenny/i, /aria/i, /ava/i, /allison/i, /samantha/i, /victoria/i, /zira/i,
+        /karen/i, /serena/i, /susan/i, /google.*female/i, /google.*us.*english/i,
+        /natural.*female/i, /online.*female/i, /female/i
+      ];
+      for (var j = 0; j < enPriorities.length; j++) {
+        var match = enVoices.find(function (v) { return enPriorities[j].test(v.name); });
+        if (match) return match;
+      }
+      return enVoices[0] || null;
+    }
+  }
+
+  function playYoungFemaleSpeech(text, index, btn) {
     if (!("speechSynthesis" in window)) {
       if (btn) updateSpeakerBtn(btn, false);
       currentSpeakingIndex = null;
@@ -1546,44 +1794,20 @@
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      var langPref = state.prefs.voiceLang || "auto";
-      var genderPref = state.prefs.voiceGender || "female";
-      var isU = langPref === "ur" || (langPref === "auto" && hasUrdu(text));
-      var voices = availableVoices.length ? availableVoices : (window.speechSynthesis.getVoices() || []);
+      var isU = (state.lang === "ur" && hasUrdu(text)) || hasUrdu(text);
+      var voice = getYoungFemaleVoice(isU);
 
-      var langVoices = voices.filter(function (v) {
-        var l = (v.lang || "").toLowerCase();
-        return isU ? (l.indexOf("ur") !== -1 || l.indexOf("hi") !== -1) : l.indexOf("en") !== -1;
-      });
-      if (!langVoices.length) langVoices = voices;
-
-      var chosenVoice = null;
-      if (genderPref === "male") {
-        chosenVoice = langVoices.find(function (v) {
-          var name = (v.name || "").toLowerCase();
-          return name.indexOf("male") !== -1 || name.indexOf("david") !== -1 || name.indexOf("daniel") !== -1 ||
-                 name.indexOf("george") !== -1 || name.indexOf("guy") !== -1 || name.indexOf("mark") !== -1 ||
-                 name.indexOf("ravi") !== -1;
-        });
-      } else {
-        chosenVoice = langVoices.find(function (v) {
-          var name = (v.name || "").toLowerCase();
-          return name.indexOf("female") !== -1 || name.indexOf("zira") !== -1 || name.indexOf("aria") !== -1 ||
-                 name.indexOf("samantha") !== -1 || name.indexOf("karen") !== -1 || name.indexOf("victoria") !== -1 ||
-                 name.indexOf("swara") !== -1 || name.indexOf("google") !== -1 || name.indexOf("natural") !== -1;
-        });
-      }
-
-      if (!chosenVoice && langVoices.length) chosenVoice = langVoices[0];
-
-      if (chosenVoice) {
-        u.voice = chosenVoice;
-        u.lang = chosenVoice.lang;
+      if (voice) {
+        u.voice = voice;
+        u.lang = voice.lang;
       } else {
         u.lang = isU ? "ur-PK" : "en-US";
       }
-      u.pitch = genderPref === "male" ? 0.95 : 1.05;
-      u.rate = 1.0;
+
+      // Tuned for ~20-25 yrs young woman: clear, soft, youthful, energetic, non-robotic
+      u.pitch = isU ? 1.15 : 1.18;
+      u.rate = 1.02;
+      u.volume = 1.0;
 
       u.onend = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
       u.onerror = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
@@ -1613,51 +1837,7 @@
       return;
     }
 
-    if (clientTtsCache[cleanText]) {
-      try {
-        sharedAudio.src = clientTtsCache[cleanText];
-        currentAudio = sharedAudio;
-        sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
-        sharedAudio.onerror = function () { fallbackSpeechSynth(cleanText, index, btn); };
-        await sharedAudio.play();
-        return;
-      } catch (e) {}
-    }
-
-    try {
-      sharedAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
-      var unlockPromise = sharedAudio.play();
-      if (unlockPromise && typeof unlockPromise.catch === "function") unlockPromise.catch(function () {});
-    } catch (e) {}
-
-    try {
-      var res = await fetch(API_TTS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanText })
-      });
-      if (currentSpeakingIndex !== index) return;
-      if (res.ok) {
-        var data = await res.json();
-        if (data.audio && currentSpeakingIndex === index) {
-          clientTtsCache[cleanText] = data.audio;
-          sharedAudio.src = data.audio;
-          currentAudio = sharedAudio;
-          sharedAudio.onended = function () {
-            if (currentSpeakingIndex === index) stopSpeaking();
-          };
-          sharedAudio.onerror = function () {
-            fallbackSpeechSynth(cleanText, index, btn);
-          };
-          await sharedAudio.play();
-          return;
-        }
-      }
-    } catch (err) {}
-
-    if (currentSpeakingIndex === index) {
-      fallbackSpeechSynth(cleanText, index, btn);
-    }
+    playYoungFemaleSpeech(cleanText, index, btn);
   }
 
   /* ---------- SVG Icons for Message Actions (NO TEXT) ---------- */
@@ -2458,6 +2638,20 @@
       syncSettingsUI();
     });
   });
+
+  document.querySelectorAll("[data-lang-set]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      applyLanguage(b.getAttribute("data-lang-set") || "ur");
+    });
+  });
+
+  if (el.menuLangSwitchBtn) {
+    el.menuLangSwitchBtn.addEventListener("click", function () {
+      var nextLang = state.lang === "ur" ? "en" : "ur";
+      applyLanguage(nextLang);
+      if (el.attachMenu) el.attachMenu.classList.remove("open");
+    });
+  }
 
   if (el.quickToolSelect) {
     el.quickToolSelect.addEventListener("change", function () {
@@ -4620,6 +4814,7 @@
   /* ---------- Init ---------- */
   loadState();
   applyTheme(currentThemeSetting());
+  applyLanguage(state.lang || "ur");
   render();
   autosize();
   checkPinLock();
@@ -4632,8 +4827,5 @@
     });
   }
 </script>
-<div id="loadingOverlay" class="loading-overlay">
-  <div class="logo-loader"></div>
-</div>
 </body>
 </html>
