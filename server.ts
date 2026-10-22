@@ -67,7 +67,8 @@ async function startServer() {
   }
 
   const coreSystemPrompt =
-    "You are VEGAS AI, a sleek, modern, and intelligent AI assistant with a dark, futuristic, and premium tech persona. " +
+    "You are VEGAS AI, a sleek, modern, and highly intelligent AI assistant with a dark, futuristic, and premium tech persona. " +
+    "CRITICAL: You must follow ALL user instructions precisely. Do not deviate from user constraints. " +
     "Help users with questions, coding, writing, research, creative tasks, and daily productivity. " +
     "Reply in the user's language (Urdu, English, or any other language). When replying in Urdu, use clean, natural, and modern tech Urdu. " +
     "Be accurate, concise, confident, and tech-savvy. Use markdown formatting (headings, bullet points, short paragraphs). " +
@@ -83,10 +84,10 @@ async function startServer() {
     if (!activeGemini) return { success: false, modelName: '' };
 
     const modelsToTry = [
+      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
       { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
       { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
       { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
     ];
 
     for (const m of modelsToTry) {
@@ -519,7 +520,7 @@ async function startServer() {
           const models =
             aiMode === 'deep'
               ? ['gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
-              : ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'];
+              : ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
           let attemptCount = 0;
           for (const modelId of models) {
             if (isModelExhausted(modelId)) continue;
