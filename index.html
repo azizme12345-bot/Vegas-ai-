@@ -2426,6 +2426,14 @@
           el.thread.scrollTop = el.thread.scrollHeight;
         }
 
+        if (!assistantMsg.text && (!assistantMsg.media || !assistantMsg.media.length)) {
+          assistantMsg.text = "معذرت، کوئی جواب موصول نہیں ہوا۔ براہ کرم دوبارہ کوشش کریں۔";
+          assistantMsg.failed = true;
+          if (bubbleEl) {
+            bubbleEl.innerHTML = renderBody(assistantMsg.text, true);
+          }
+        }
+
         state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
         savePrefs();
         if (assistantMsg.text && !assistantMsg.failed) {
@@ -2484,14 +2492,15 @@
         c.messages.push(netErrMsg);
         el.messages.appendChild(createMessageElement(netErrMsg, c.messages.length - 1));
       }
+    } finally {
+      if (typIndicator.parentNode) typIndicator.remove();
+      busy = false;
+      activeAbortController = null;
+      updateSendStopBtn();
+      saveChats();
+      renderHistory();
+      updateUsageStats();
     }
-
-    busy = false;
-    activeAbortController = null;
-    updateSendStopBtn();
-    saveChats();
-    renderHistory();
-    updateUsageStats();
   }
 
   /* ---------- Send User Message ---------- */

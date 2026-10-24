@@ -84,10 +84,11 @@ async function startServer() {
     if (!activeGemini) return { success: false, modelName: '' };
 
     const modelsToTry = [
-      { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash Exp' },
-      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
-      { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
-      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+      { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
+      { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
+      { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash Lite' },
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
+      { id: 'gemini-flash-latest', name: 'Gemini Flash' },
     ];
 
     for (const m of modelsToTry) {
@@ -99,9 +100,6 @@ async function startServer() {
           contents: contents,
           config: {
             systemInstruction: coreSystemPrompt,
-            thinkingConfig: {
-              thinkingBudget: 0,
-            },
           },
         });
 
@@ -505,6 +503,14 @@ async function startServer() {
         };
       });
 
+      // Ensure the first turn in geminiContents is always 'user'
+      while (geminiContents.length > 0 && geminiContents[0].role === 'model') {
+        geminiContents.shift();
+      }
+      if (geminiContents.length === 0) {
+        geminiContents.push({ role: 'user', parts: [{ text: latestUserText || 'Hello' }] });
+      }
+
       const wantStream = Boolean(req.body.stream);
       let order: ('gemini' | 'openai')[] = ['gemini', 'openai'];
       if (providerPreference === 'openai') {
@@ -519,8 +525,8 @@ async function startServer() {
         if (provider === 'gemini' && activeGemini) {
           const models =
             aiMode === 'deep'
-              ? ['gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
-              : ['gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'];
+              ? ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest']
+              : ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
           let attemptCount = 0;
           for (const modelId of models) {
             if (isModelExhausted(modelId)) continue;
@@ -537,7 +543,6 @@ async function startServer() {
                 contents: geminiContents,
                 config: {
                   systemInstruction: systemPrompt,
-                  thinkingConfig: { thinkingBudget: 0 },
                 },
               });
               let fullText = '';
