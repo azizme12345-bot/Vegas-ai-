@@ -1792,6 +1792,9 @@
     }
 
     try {
+      if (window.speechSynthesis.paused) {
+        try { window.speechSynthesis.resume(); } catch (re) {}
+      }
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
       var isU = (state.lang === "ur" && hasUrdu(text)) || hasUrdu(text);
@@ -1799,7 +1802,6 @@
 
       if (voice) {
         u.voice = voice;
-        // Do not force u.lang if u.voice is set, as it might conflict
       } else {
         u.lang = isU ? "ur-PK" : "en-US";
       }
@@ -1837,7 +1839,47 @@
       return;
     }
 
-    playYoungFemaleSpeech(cleanText, index, btn);
+    // 1. Cached audio check for 0ms instant playback
+    if (clientTtsCache[cleanText]) {
+      try {
+        sharedAudio.src = clientTtsCache[cleanText];
+        sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+        sharedAudio.onerror = function () { playYoungFemaleSpeech(cleanText, index, btn); };
+        var pCached = sharedAudio.play();
+        if (pCached && pCached.catch) {
+          pCached.catch(function () { playYoungFemaleSpeech(cleanText, index, btn); });
+        }
+        return;
+      } catch (err) {}
+    }
+
+    // 2. High-fidelity neural voice from /api/tts for human-like natural Urdu and English
+    fetch(API_TTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: cleanText })
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (currentSpeakingIndex !== index) return;
+        if (d && d.audio) {
+          clientTtsCache[cleanText] = d.audio;
+          sharedAudio.src = d.audio;
+          sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+          sharedAudio.onerror = function () { playYoungFemaleSpeech(cleanText, index, btn); };
+          var p = sharedAudio.play();
+          if (p && p.catch) {
+            p.catch(function () { playYoungFemaleSpeech(cleanText, index, btn); });
+          }
+        } else {
+          playYoungFemaleSpeech(cleanText, index, btn);
+        }
+      })
+      .catch(function () {
+        if (currentSpeakingIndex === index) {
+          playYoungFemaleSpeech(cleanText, index, btn);
+        }
+      });
   }
 
   /* ---------- SVG Icons for Message Actions (NO TEXT) ---------- */
@@ -2361,6 +2403,8 @@
     el.thread.scrollTop = el.thread.scrollHeight;
 
     activeAbortController = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var assistantMsg = null;
+    var bubbleEl = null;
 
     try {
       var res = await fetch(API_CHAT_URL, {
@@ -2384,12 +2428,12 @@
       var contentType = (res.headers.get("content-type") || "").toLowerCase();
       if (contentType.indexOf("text/event-stream") !== -1 && res.body && res.body.getReader) {
         if (typIndicator.parentNode) typIndicator.remove();
-        var assistantMsg = { role: "assistant", text: "", media: [] };
+        assistantMsg = { role: "assistant", text: "", media: [] };
         c.messages.push(assistantMsg);
         var msgIdx = c.messages.length - 1;
         var msgEl = createMessageElement(assistantMsg, msgIdx);
         el.messages.appendChild(msgEl);
-        var bubbleEl = msgEl.querySelector(".bubble");
+        bubbleEl = msgEl.querySelector(".bubble");
 
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
@@ -2443,7 +2487,7 @@
         var data = await res.json();
         if (typIndicator.parentNode) typIndicator.remove();
 
-        var assistantMsg = { role: "assistant", text: "", media: [] };
+        assistantMsg = { role: "assistant", text: "", media: [] };
         if (data.imageUrl) {
           assistantMsg.media.push({
             type: "image",
@@ -2474,14 +2518,22 @@
     } catch (err) {
       if (typIndicator.parentNode) typIndicator.remove();
       if (err && err.name === "AbortError") {
-        var stoppedMsg = {
-          role: "assistant",
-          text: "جواب روک دیا گیا۔ (Generation stopped)",
-          failed: false,
-          media: []
-        };
-        c.messages.push(stoppedMsg);
-        el.messages.appendChild(createMessageElement(stoppedMsg, c.messages.length - 1));
+        if (assistantMsg && assistantMsg.text) {
+          assistantMsg.text += "\n\n*(جواب مکمل نہیں ہوا / Generation stopped)*";
+          if (bubbleEl) {
+            var isU2 = hasUrdu(assistantMsg.text);
+            bubbleEl.innerHTML = renderBody(assistantMsg.text, isU2);
+          }
+        } else {
+          var stoppedMsg = {
+            role: "assistant",
+            text: "جواب روک دیا گیا۔ (Generation stopped)",
+            failed: false,
+            media: []
+          };
+          c.messages.push(stoppedMsg);
+          el.messages.appendChild(createMessageElement(stoppedMsg, c.messages.length - 1));
+        }
       } else {
         var netErrMsg = {
           role: "assistant",
@@ -2504,9 +2556,11 @@
   }
 
   /* ---------- Send User Message ---------- */
-  async function send() {
+  async function send(forceStop) {
     if (busy) {
-      stopAiGeneration();
+      if (forceStop) {
+        stopAiGeneration();
+      }
       return;
     }
     var text = el.input.value.trim();
@@ -3136,11 +3190,10 @@
         resetMicUI();
         return;
       }
-      fetch("/api/chat", {
+      fetch(API_TRANSCRIBE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "transcribe",
           audio: base64Audio,
           mimeType: mimeType || blob.type || "audio/webm"
         })
@@ -3316,12 +3369,26 @@
     });
   }
 
-  /* ---------- Main events & Keyboard Shortcuts ---------- */
-  el.composer.addEventListener("submit", function (e) { e.preventDefault(); send(); });
+  el.composer.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!busy) send();
+  });
   el.input.addEventListener("input", autosize);
   el.input.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      if (!busy) send();
+    }
   });
+  if (el.sendBtn) {
+    el.sendBtn.addEventListener("click", function (e) {
+      if (busy) {
+        e.preventDefault();
+        e.stopPropagation();
+        stopAiGeneration();
+      }
+    });
+  }
   if (el.headerNewChatBtn) el.headerNewChatBtn.addEventListener("click", newChat);
   if (el.undoBtn) el.undoBtn.addEventListener("click", undo);
   if (el.redoBtn) el.redoBtn.addEventListener("click", redo);
