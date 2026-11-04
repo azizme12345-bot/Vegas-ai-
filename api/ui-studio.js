@@ -688,17 +688,18 @@ export function renderUiConceptSvg(concept, index = 0) {
   return `data:image/svg+xml;base64,${base64Svg}`;
 }
 
-async function callGeminiText(parts, systemInstruction, apiKey, wantJson = false) {
+async function callGeminiText(parts, systemInstruction, apiKey, wantJson = false, extraConfig = {}) {
   for (const modelName of TEXT_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
         apiKey
       )}`;
+      const genConfig = wantJson
+        ? { responseMimeType: "application/json", temperature: 0.7, ...extraConfig }
+        : { temperature: 0.5, ...extraConfig };
       const payload = {
         contents: [{ role: "user", parts }],
-        generationConfig: wantJson
-          ? { responseMimeType: "application/json", temperature: 0.7 }
-          : { temperature: 0.5 },
+        generationConfig: genConfig,
       };
       if (systemInstruction) {
         payload.systemInstruction = { parts: [{ text: systemInstruction }] };
@@ -1168,6 +1169,8 @@ Return ONLY valid JSON with:
     // =========================================================================
     // ACTION 3: CONVERT SELECTED DESIGN TO COMPLETE HTML, CSS & JAVASCRIPT
     // =========================================================================
+    // ACTION 3: CONVERT SELECTED DESIGN TO COMPLETE HTML, CSS & JAVASCRIPT
+    // =========================================================================
     if (action === "convert-to-html") {
       const selectedConcept = body.selectedConcept || {};
       const originalPrompt = String(body.originalPrompt || "").trim();
@@ -1184,16 +1187,34 @@ Return ONLY valid JSON with:
         uiSpec: selectedConcept.uiSpec,
       };
 
-      const systemInstruction = `You are a Principal Frontend Engineer.
-Convert the selected UI Design Concept into a COMPLETE, single-file, production-ready HTML5 application (with embedded modern CSS and interactive JavaScript).
+      const systemInstruction = `You are a Principal Frontend Engineer and UI/UX Architect.
+Convert the selected UI Design Concept into a COMPLETE, professional, premium-quality, single-file HTML5 application (with embedded modern CSS and interactive JavaScript).
 CRITICAL RULES:
 1. Output ONLY the complete HTML code starting with <!DOCTYPE html> and ending with </html>. Do NOT wrap in markdown explanations outside the code block.
-2. Match the selected design's exact color palette (${JSON.stringify(
-        selectedConcept.palette || {}
-      )}), brand name, typography, layout structure, navigation, hero section, stats, cards, and domain features (${
-        selectedConcept.appType || "desktop"
-      }).
-3. Make the layout fully responsive for both mobile and desktop screens, with smooth hover transitions, clean spacing, and working interactive JavaScript (e.g. working tabs, interactive translator/chat/dashboard demo functionality, modal/toast feedback, and filter/search interactivity).`;
+2. CONTENT & DESIGN:
+   - Use realistic, specific content tailored to the brand and app type (NO lorem ipsum, NO generic labels like "Feature 1" or "Card 1").
+   - Follow a clear typography scale, consistent 8px spacing system, the exact color palette provided (${JSON.stringify(
+     selectedConcept.palette || {}
+   )}), excellent contrast, and visible hover and focus states for all interactive elements.
+   - Make the layout fully responsive for both mobile and desktop screens.
+   - Avoid repeating identical cards as the only design idea; give the page one clear focal section (e.g., hero banner, interactive workspace, or core conversion feature).
+3. FONTS & RTL:
+   - Load Inter for English text and Noto Naskh Arabic for Urdu text from Google Fonts:
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+   - Apply font-family with fallbacks (e.g. font-family: 'Inter', 'Noto Naskh Arabic', system-ui, sans-serif;).
+   - Put dir="rtl" on any section or element containing Urdu text.
+4. INTERACTIVITY:
+   - Include working interactive JavaScript (e.g. tabs, modals, filters, search, or functional app demo).`;
+
+      const reviewSystemInstruction = `You are a Principal QA & Frontend Architect. Review the provided HTML code against this strict checklist:
+- Layout problems or overlapping elements
+- Missing or placeholder content (lorem ipsum, generic cards)
+- Broken responsive rules or mobile overflow
+- Buttons or interactive elements that do nothing
+- Missing Google Fonts (Inter / Noto Naskh Arabic) or missing dir="rtl" for Urdu
+- Text overflow or poor contrast
+
+Return ONLY the full corrected, production-ready HTML code starting with <!DOCTYPE html> and ending with </html>. No markdown explanations outside the code block.`;
 
       const parts = [];
       if (
@@ -1232,29 +1253,46 @@ CRITICAL RULES:
         });
       }
 
-      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, false);
+      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, false, { maxOutputTokens: 8192 });
       let rawCode = aiResp?.text || "";
 
-      const codeBlockMatch = rawCode.match(/```(?:html)?\s*([\s\S]*?)```/i);
-      if (codeBlockMatch && codeBlockMatch[1]) {
-        rawCode = codeBlockMatch[1].trim();
-      } else {
-        const docIdx = rawCode.indexOf("<!DOCTYPE html");
-        const htmlIdx = rawCode.indexOf("<html");
+      function extractHtml(text) {
+        const match = text.match(/```(?:html)?\s*([\s\S]*?)```/i);
+        if (match && match[1]) return match[1].trim();
+        const docIdx = text.indexOf("<!DOCTYPE html");
+        const htmlIdx = text.indexOf("<html");
         const startIdx = docIdx !== -1 ? docIdx : htmlIdx;
-        if (startIdx > 0) {
-          rawCode = rawCode.slice(startIdx).trim();
+        if (startIdx !== -1) return text.slice(startIdx).trim();
+        return text.trim();
+      }
+
+      let htmlCode = extractHtml(rawCode);
+
+      if (!htmlCode.toLowerCase().startsWith("<!doctype html>") || !htmlCode.toLowerCase().endsWith("</html>")) {
+        const finishPrompt = `The previous HTML output was cut off or incomplete. Please provide the COMPLETE single-file HTML document starting with <!DOCTYPE html> and ending with </html> without truncation:\n\n${htmlCode}`;
+        const finishResp = await callGeminiText([{ text: finishPrompt }], systemInstruction, apiKey, false, { maxOutputTokens: 8192 });
+        const finishedCode = extractHtml(finishResp?.text || "");
+        if (finishedCode.toLowerCase().startsWith("<!doctype html>") && finishedCode.toLowerCase().endswith("</html>")) {
+          htmlCode = finishedCode;
+        } else {
+          return res.status(500).json({ error: "Generated HTML was incomplete or cut off. Please try again." });
         }
       }
 
-      if (!rawCode || !rawCode.includes("<")) {
-        return res.status(500).json({
-          error: "کوڈ تیار کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔",
-        });
-      }
+      // Design Review Pass (Part 4)
+      try {
+        const reviewParts = [{ text: `Please review and correct this HTML code according to the checklist:\n\n${htmlCode}` }];
+        const reviewResp = await callGeminiText(reviewParts, reviewSystemInstruction, apiKey, false, { maxOutputTokens: 8192 });
+        if (reviewResp && reviewResp.text) {
+          const reviewedCode = extractHtml(reviewResp.text);
+          if (reviewedCode.toLowerCase().startsWith("<!doctype html>") && reviewedCode.toLowerCase().endswith("</html>")) {
+            htmlCode = reviewedCode;
+          }
+        }
+      } catch (_reviewErr) {}
 
       return res.status(200).json({
-        html: rawCode,
+        html: htmlCode,
         reply: codeInstruction
           ? "آپ کی ہدایت کے مطابق HTML کوڈ اپ ڈیٹ کر دیا گیا ہے۔"
           : "منتخب کردہ ڈیزائن کے مطابق مکمل HTML، CSS اور JavaScript کوڈ تیار کر دیا گیا ہے۔",

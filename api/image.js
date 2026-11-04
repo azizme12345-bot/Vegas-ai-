@@ -277,69 +277,13 @@ Analyze and output STRICT JSON format:
       });
     }
 
-    // 3. Fallback: High-resolution visual scene generation via Gemini 3.8 Flash
-    const scenePrompt = `You are a World-Class Digital Artist, UI Designer, and Visual Director.
-The user wants to generate an image for: "${prompt}".
-Style: ${style}.
-Aspect Ratio: ${aspectRatio}.
-
-Deconstruct this scene into visual components. Output STRICT JSON only:
-{
-  "title": "Short title",
-  "subjectTitle": "Main focal subject name",
-  "mood": "Cinematic / Realistic / Modern",
-  "backgroundColor": "#HexCode",
-  "secondaryBg": "#HexCode",
-  "primaryColor": "#HexCode",
-  "accentColor": "#HexCode",
-  "textColor": "#HexCode",
-  "elements": [
-    { "label": "Key element 1", "sublabel": "Visual detail", "x": 120, "y": 240, "w": 320, "h": 160, "color": "#Hex", "opacity": 0.9 },
-    { "label": "Key element 2", "sublabel": "Lighting/Texture", "x": 480, "y": 280, "w": 320, "h": 160, "color": "#Hex", "opacity": 0.9 },
-    { "label": "Focal Highlight", "sublabel": "Core detail", "x": 280, "y": 440, "w": 380, "h": 140, "color": "#Hex", "opacity": 0.95 }
-  ],
-  "visualDescription": "Detailed visual description of the generated artwork"
-}`;
-
-    let sceneSpec = {};
-    try {
-      const sceneResp = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: scenePrompt
-      });
-      const jsonMatch = (sceneResp.text || "").match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        sceneSpec = JSON.parse(jsonMatch[0]);
-      }
-    } catch (_err) {
-      sceneSpec = {
-        title: prompt.slice(0, 36),
-        subjectTitle: prompt.slice(0, 36),
-        mood: style,
-        backgroundColor: "#0F172A",
-        secondaryBg: "#1E293B",
-        primaryColor: "#3B82F6",
-        accentColor: "#10B981",
-        textColor: "#F8FAFC"
-      };
-    }
-
-    const visualSvgUrl = renderArtisticSceneSvg(sceneSpec, prompt, aspectRatio);
-
-    return res.status(200).json({
-      success: true,
-      imageUrl: visualSvgUrl,
-      fallbackSvgUrl: visualSvgUrl,
-      model: "Gemini Vision Scene Engine",
-      notice: "Google AI Studio Free Tier has a quota limit of 0 for native Imagen diffusion. Rendered high-resolution artwork using Gemini multimodal scene synthesis.",
-      prompt,
-      aspectRatio,
-      spec: sceneSpec
+    return res.status(503).json({
+      error: "Photo generation is not available right now. It needs a paid image model on this API key."
     });
 
   } catch (err) {
     return res.status(500).json({
-      error: "Error processing image request. Please try again.",
+      error: "Photo generation is not available right now. It needs a paid image model on this API key.",
     });
   }
 }
