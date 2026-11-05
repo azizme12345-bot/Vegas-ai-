@@ -4552,12 +4552,16 @@
     }
     if (stEl.stage2Status) {
       stEl.stage2Status.hidden = false;
-      stEl.stage2Status.textContent = codeInstruction
-        ? "Updating HTML, CSS, and JavaScript code based on your instructions..."
-        : "Converting selected UI design into complete HTML, CSS, and JavaScript code...";
+      stEl.stage2Status.textContent = "Creating design...";
     }
 
     try {
+      var reviewTimer = setTimeout(function () {
+        if (stEl.stage2Status && studioState.busy) {
+          stEl.stage2Status.textContent = "Reviewing design...";
+        }
+      }, 3500);
+
       var res = await fetch("/api/ui-studio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -4570,6 +4574,7 @@
           currentHtml: codeInstruction ? studioState.generatedHtml : ""
         })
       });
+      clearTimeout(reviewTimer);
       var data = await res.json();
       if (!res.ok || data.error) {
         if (stEl.stage2Status) {
