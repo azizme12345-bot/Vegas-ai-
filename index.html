@@ -1130,6 +1130,43 @@
     </div>
   </div>
 
+  <!-- PWA Install Guide Modal -->
+  <div class="modal-wrap" id="installModal" role="dialog" aria-modal="true" aria-labelledby="installModalTitle">
+    <div class="modal" style="max-width: 440px;">
+      <div class="modal-head">
+        <h2 id="installModalTitle" style="display:flex;align-items:center;gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Install Vegas AI
+        </h2>
+        <button class="icon-btn" id="closeInstallModalBtn" aria-label="Close install dialog">✕</button>
+      </div>
+      <div style="font-size:14.5px;color:var(--ink);line-height:1.6;display:flex;flex-direction:column;gap:12px;">
+        <p style="margin:0;" id="installModalDesc">
+          Install Vegas AI as a standalone app on your phone, tablet, or desktop for 1-tap instant access, full screen view, and offline performance.
+        </p>
+
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="font-weight:600;font-size:14px;">Direct Browser Steps:</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:13.5px;">
+            <span style="font-weight:700;">1.</span>
+            <span><strong>Chrome / Edge / Android:</strong> Tap browser menu (<strong>⋮</strong> or install icon ⊕ in address bar) and choose <strong>"Install Vegas AI"</strong> or <strong>"Add to Home screen"</strong>.</span>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:8px;font-size:13.5px;">
+            <span style="font-weight:700;">2.</span>
+            <span><strong>iPhone / Safari:</strong> Tap the <strong>Share</strong> button (box with arrow ↑) and select <strong>"Add to Home Screen"</strong>.</span>
+          </div>
+        </div>
+
+        <div id="installNativeActionRow" style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button type="button" class="studio-secondary-btn" id="dismissInstallModalBtn">Close</button>
+          <button type="button" class="studio-primary-btn" id="triggerNativeInstallBtn">
+            Install Now ⚡
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings panel -->
   <div class="modal-wrap" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
     <div class="modal">
@@ -1622,10 +1659,54 @@
 
   /* ---------- PWA Installation ---------- */
   var deferredPrompt;
+  var installModalEl = $("installModal");
+  var closeInstallModalBtn = $("closeInstallModalBtn");
+  var dismissInstallModalBtn = $("dismissInstallModalBtn");
+  var triggerNativeInstallBtn = $("triggerNativeInstallBtn");
+
+  function openInstallModal() {
+    closeMenu();
+    if (installModalEl) installModalEl.classList.add("show");
+  }
+
+  function closeInstallModal() {
+    if (installModalEl) installModalEl.classList.remove("show");
+  }
+
+  if (closeInstallModalBtn) closeInstallModalBtn.addEventListener("click", closeInstallModal);
+  if (dismissInstallModalBtn) dismissInstallModalBtn.addEventListener("click", closeInstallModal);
+  if (installModalEl) {
+    installModalEl.addEventListener("click", function(e) {
+      if (e.target === installModalEl) closeInstallModal();
+    });
+  }
+
   window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     deferredPrompt = e;
   });
+
+  if (triggerNativeInstallBtn) {
+    triggerNativeInstallBtn.addEventListener("click", function() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice) {
+          if (choice.outcome === 'accepted') {
+            closeInstallModal();
+            if (el.installPwaBtn) el.installPwaBtn.style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        closeInstallModal();
+        var msg = (state && state.lang === "ur")
+          ? "ایپ انسٹال کرنے کے لیے براؤزر کے مینو (⋮ یا Share) سے 'Install App' یا 'Add to Home Screen' منتخب کریں۔"
+          : "To install, tap your browser's menu (⋮ or Share) and select 'Install Vegas AI' or 'Add to Home Screen'.";
+        showVoiceError(msg);
+      }
+    });
+  }
+
   if (el.installPwaBtn) {
     el.installPwaBtn.addEventListener('click', function() {
       if (deferredPrompt) {
@@ -1637,18 +1718,15 @@
           deferredPrompt = null;
         });
       } else {
-        closeMenu();
-        var msg = (state && state.lang === "ur")
-          ? "ایپ انسٹال کرنے کے لیے براؤزر کے مینو (⋮ یا Share) سے 'Install App' یا 'Add to Home Screen' منتخب کریں۔"
-          : "To install the app, open your browser menu (⋮ or Share) and select 'Install App' or 'Add to Home Screen'.";
-        showVoiceError(msg);
+        openInstallModal();
       }
     });
     window.addEventListener('appinstalled', function() {
-      el.installPwaBtn.style.display = 'none';
+      if (el.installPwaBtn) el.installPwaBtn.style.display = 'none';
+      closeInstallModal();
     });
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-      el.installPwaBtn.style.display = 'none';
+      if (el.installPwaBtn) el.installPwaBtn.style.display = 'none';
     }
   }
 
@@ -1938,14 +2016,20 @@
     u.onerror = function (err) {
       cleanupUtterance();
       var errName = (err && (err.error || err.type || err.message)) || "speech-error";
+      if (errName === "interrupted" || errName === "canceled") {
+        return;
+      }
       stopSpeaking();
       var isUrduMsg = detectTextLanguage(chunk) === "ur";
       showVoiceError(isUrduMsg
-        ? "آواز میں خرابی پیش آئی (" + errName + ")۔"
+        ? "آواز میں مسئلہ پیش آیا (" + errName + ")۔"
         : "Speech error (" + errName + ").");
     };
 
     try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.speak(u);
     } catch (e) {
       cleanupUtterance();
@@ -1973,7 +2057,7 @@
     }
 
     if (!("speechSynthesis" in window)) {
-      showVoiceError("اس ڈیوائس پر کوئی وائس دستیاب نہیں ہے۔ اپنے فون کی سیٹنگز میں ٹیکسٹ ٹو اسپیچ وائس انسٹال کریں۔ / No voice is available on this device. Install a text-to-speech voice in your phone settings.");
+      showVoiceError("اس ڈیوائس پر ٹیکسٹ ٹو اسپیچ وائس دستیاب نہیں ہے۔ / Text-to-speech is not supported on this device.");
       stopSpeaking();
       return;
     }
@@ -1992,11 +2076,11 @@
         return;
       }
 
-      setTimeout(function () {
-        if (currentSpeakingIndex === index) {
-          playNextSpeechChunk(index, btn);
-        }
-      }, 150);
+      // Resume context and speak first chunk immediately
+      if (window.speechSynthesis.paused) {
+        try { window.speechSynthesis.resume(); } catch (re) {}
+      }
+      playNextSpeechChunk(index, btn);
     } catch (e) {
       stopSpeaking();
       showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");
@@ -3442,61 +3526,66 @@
     el.micBtn.style.opacity = "0.35";
     el.micBtn.setAttribute("title", "آپ کا براؤزر آواز سے لکھنے کی سہولت سپورٹ نہیں کرتا۔ براہ کرم Chrome یا Edge استعمال کریں۔");
   } else {
-    if (Rec) {
-      rec = new Rec();
-      rec.lang = "ur-PK";
-      rec.interimResults = true;
-      rec.continuous = false;
+    function initSpeechRecognition() {
+      if (!Rec) return null;
+      try {
+        var r = new Rec();
+        r.lang = (state && state.lang === "ur") ? "ur-PK" : "en-US";
+        r.interimResults = true;
+        r.continuous = false;
+        r.maxAlternatives = 1;
 
-      rec.onstart = function () {
-        listening = true;
-        el.micBtn.classList.add("on");
-        el.micBtn.setAttribute("title", "Stop Listening (ریکارڈنگ روکیں)");
-        el.input.setAttribute("placeholder", "سن رہا ہے... بولیں");
-      };
+        r.onstart = function () {
+          listening = true;
+          el.micBtn.classList.add("on");
+          el.micBtn.setAttribute("title", "Stop Listening (ریکارڈنگ روکیں)");
+          el.input.setAttribute("placeholder", (state && state.lang === "ur") ? "سن رہا ہے... بولیں" : "Listening... speak now");
+        };
 
-      rec.onresult = function (e) {
-        var transcript = "";
-        for (var i = 0; i < e.results.length; i++) {
-          transcript += e.results[i][0].transcript;
-        }
-        if (transcript) {
-          recTranscript = transcript.trim();
-          el.input.value = baseInputBeforeMic + recTranscript;
-          autosize();
-          el.input.focus();
-        }
-      };
-
-      rec.onerror = function (e) {
-        // If MediaRecorder is active, it will seamlessly handle transcription on stop
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-          return;
-        }
-        listening = false;
-        el.micBtn.classList.remove("on");
-        var errCode = e && e.error ? e.error : "";
-        if (errCode === "not-allowed" || errCode === "service-not-allowed") {
-          showVoiceError("مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔");
-        } else if (errCode === "no-speech") {
-          showVoiceError("کوئی آواز سنائی نہیں دی۔ براہ کرم دوبارہ بولنے کی کوشش کریں۔");
-        } else if (errCode === "network") {
-          showVoiceError("نیٹ ورک کی خرابی کی وجہ سے آواز شناخت نہیں ہو سکی۔ اپنا انٹرنیٹ چیک کریں۔");
-        } else if (errCode !== "aborted") {
-          showVoiceError("آواز شناخت کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔");
-        }
-      };
-
-      rec.onend = function () {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-          if (recTranscript.trim()) {
-            stopVoiceInput();
+        r.onresult = function (e) {
+          var transcript = "";
+          for (var i = 0; i < e.results.length; i++) {
+            transcript += e.results[i][0].transcript;
           }
-          return;
-        }
-        resetMicUI();
-      };
+          if (transcript) {
+            recTranscript = transcript.trim();
+            el.input.value = baseInputBeforeMic + recTranscript;
+            autosize();
+            el.input.focus();
+          }
+        };
+
+        r.onerror = function (e) {
+          var errCode = e && e.error ? e.error : "";
+          if (errCode === "not-allowed" || errCode === "service-not-allowed") {
+            listening = false;
+            el.micBtn.classList.remove("on");
+            showVoiceError((state && state.lang === "ur") ? "مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔" : "Microphone permission denied. Please allow microphone in browser.");
+          } else if (mediaRecorder && mediaRecorder.state === "recording") {
+            // MediaRecorder is recording in parallel, ignore browser STT network glitches
+            return;
+          } else if (errCode === "no-speech") {
+            // Will be handled gracefully
+          }
+        };
+
+        r.onend = function () {
+          if (mediaRecorder && mediaRecorder.state === "recording") {
+            if (recTranscript.trim()) {
+              stopVoiceInput();
+            }
+            return;
+          }
+          resetMicUI();
+        };
+
+        return r;
+      } catch (e) {
+        return null;
+      }
     }
+
+    rec = initSpeechRecognition();
 
     el.micBtn.addEventListener("click", function () {
       if (listening) {
@@ -3506,6 +3595,11 @@
 
       baseInputBeforeMic = el.input.value ? el.input.value.trim() + " " : "";
       recTranscript = "";
+
+      // Re-initialize or refresh rec language according to current active language
+      if (Rec) {
+        rec = initSpeechRecognition();
+      }
 
       if (hasMediaMic) {
         navigator.mediaDevices.getUserMedia({
@@ -3550,33 +3644,43 @@
           listening = true;
           el.micBtn.classList.add("on");
           el.micBtn.setAttribute("title", "Stop Listening (ریکارڈنگ روکیں)");
-          el.input.setAttribute("placeholder", "سن رہا ہے... بولیں");
+          el.input.setAttribute("placeholder", (state && state.lang === "ur") ? "سن رہا ہے... بولیں" : "Listening... speak now");
 
-          // Start native SpeechRecognition in parallel on non-Android devices for live interim text
-          if (rec && !isAndroidDevice) {
+          // Start native SpeechRecognition for instant real-time live typing
+          if (rec) {
             try { rec.start(); } catch (e) {}
           }
 
           maxRecordTimer = setTimeout(function () {
             if (listening) stopVoiceInput();
-          }, 120000);
+          }, 60000);
         }).catch(function (err) {
-          listening = false;
-          el.micBtn.classList.remove("on");
           var errName = (err && err.name) ? String(err.name) : "";
           if (errName === "NotAllowedError" || errName === "PermissionDeniedError") {
-            showVoiceError("مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔");
+            listening = false;
+            el.micBtn.classList.remove("on");
+            showVoiceError((state && state.lang === "ur") ? "مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔" : "Microphone permission denied. Please allow microphone in browser.");
           } else if (rec) {
-            try { rec.start(); } catch (e) {
-              showVoiceError("آواز شناخت کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔");
+            try {
+              rec.start();
+            } catch (e) {
+              listening = false;
+              el.micBtn.classList.remove("on");
+              showVoiceError((state && state.lang === "ur") ? "آواز شناخت کرنے میں خرابی پیش آئی۔" : "Speech recognition error.");
             }
           } else {
-            showVoiceError("مائیکروفون کی اجازت نہیں ملی۔ براہ کرم براؤزر میں مائیک کی اجازت دیں۔");
+            listening = false;
+            el.micBtn.classList.remove("on");
+            showVoiceError((state && state.lang === "ur") ? "مائیکروفون کی اجازت نہیں ملی۔" : "Microphone not available.");
           }
         });
       } else if (rec) {
-        try { rec.start(); } catch (e) {
-          showVoiceError("آواز شناخت کرنے میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔");
+        try {
+          rec.start();
+        } catch (e) {
+          listening = false;
+          el.micBtn.classList.remove("on");
+          showVoiceError((state && state.lang === "ur") ? "آواز شناخت کرنے میں خرابی پیش آئی۔" : "Speech recognition error.");
         }
       }
     });
