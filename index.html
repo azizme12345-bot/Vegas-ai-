@@ -614,6 +614,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
         AI Image &amp; Photo Studio
       </button>
+      <button type="button" class="feat" id="sidebarAnalyzerBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Site &amp; Code Analyzer (سائٹ اور کوڈ تجزیہ)
+      </button>
       <button type="button" class="feat" id="installPwaBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
         Install App (ایپ انسٹال کریں)
@@ -685,6 +689,10 @@
               <button type="button" class="attach-menu-item" id="menuUiStudioBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                 <span id="menuUiStudioText">UI Design Studio (ڈیزائن اسٹوڈیو)</span>
+              </button>
+              <button type="button" class="attach-menu-item" id="menuAnalyzerBtn" role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <span id="menuAnalyzerText">Site &amp; Code Analyzer (سائٹ تجزیہ)</span>
               </button>
               <button type="button" class="attach-menu-item" id="menuPromptBtn" role="menuitem">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -1462,6 +1470,7 @@
     attachWrap: $("attachWrap"), attachBtn: $("attachBtn"), attachMenu: $("attachMenu"),
     menuCameraBtn: $("menuCameraBtn"), menuFilesBtn: $("menuFilesBtn"), menuGalleryBtn: $("menuGalleryBtn"),
     menuImgGenBtn: $("menuImgGenBtn"), menuPromptBtn: $("menuPromptBtn"), menuLangSwitchBtn: $("menuLangSwitchBtn"),
+    menuAnalyzerBtn: $("menuAnalyzerBtn"), sidebarAnalyzerBtn: $("sidebarAnalyzerBtn"),
     cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
     attachments: $("attachments"),
     brandText: $("brandText"), homeHeading: $("homeHeading"),
@@ -2407,6 +2416,97 @@
     var bubbleEl = null;
 
     try {
+      function isAnalysisRequest(textStr) {
+        var lower = (textStr || "").toLowerCase();
+        var keywords = ["analyze", "check", "review", "audit", "تجزیہ", "چیک", "جائزہ", "پڑتال", "check karo", "analyze karo", "review karo", "audit karo"];
+        return keywords.some(function (k) { return lower.indexOf(k) !== -1; });
+      }
+
+      function extractUrl(textStr) {
+        var matches = String(textStr || "").match(/https?:\/\/[^\s)>\]"']+/gi);
+        return matches && matches.length ? matches[0] : null;
+      }
+
+      if (isAnalysisRequest(text)) {
+        var targetUrl = extractUrl(text);
+        var hasAttachedFiles = lastUserMsg.media && lastUserMsg.media.length > 0;
+        var githubLink = targetUrl && targetUrl.indexOf("github.com") !== -1 ? targetUrl : null;
+
+        if (!targetUrl && !hasAttachedFiles) {
+          if (typIndicator.parentNode) typIndicator.remove();
+          var lang = state.lang || "ur";
+          var promptMsg = lang === "ur"
+            ? "براہ کرم تجزیہ کے لیے کوئی ویب سائٹ کا یو آر ایل، گিট ہب لنک یا کوڈ فائلیں فراہم کریں۔"
+            : "Please provide a website URL, GitHub repository link, or code files for analysis.";
+          var assistMsg = { role: "assistant", text: promptMsg, media: [] };
+          c.messages.push(assistMsg);
+          el.messages.appendChild(createMessageElement(assistMsg, c.messages.length - 1));
+          el.thread.scrollTop = el.thread.scrollHeight;
+          busy = false;
+          updateSendStopBtn();
+          saveChats();
+          return;
+        }
+
+        var endpoint = githubLink || hasAttachedFiles ? "/api/analyze-code" : "/api/analyze-url";
+        var payload = githubLink ? { githubUrl: githubLink } : hasAttachedFiles ? { files: lastUserMsg.media } : { url: targetUrl };
+
+        try {
+          var analysisRes = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          var analysisData = await analysisRes.json();
+
+          var storageKey = "vegas_analyzer_reports";
+          var savedReports = {};
+          try {
+            savedReports = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          } catch (e) {}
+
+          var targetKey = targetUrl || githubLink || "uploaded_files";
+          var prevReport = savedReports[targetKey] || null;
+          var currentIssueIds = (analysisData.issues || []).map(function(_, idx){ return "ISSUE-" + (idx + 1); });
+          if (!currentIssueIds.length && analysisData.assets && analysisData.assets.broken && analysisData.assets.broken.length) {
+            analysisData.assets.broken.forEach(function(_, idx) { currentIssueIds.push("ISSUE-" + (idx + 1)); });
+          }
+
+          var comparisonText = "";
+          if (prevReport && prevReport.issueIds) {
+            comparisonText = "\n\n[Previous Report Comparison / پچھلی رپورٹ کا موازنہ]:\n";
+            prevReport.issueIds.forEach(function(oldId) {
+              var stillExists = currentIssueIds.indexOf(oldId) !== -1;
+              if (stillExists) {
+                comparisonText += `- ${oldId}: Still present (ابھی بھی موجود ہے)\n`;
+              } else {
+                comparisonText += `- ${oldId}: Solved (حل ہو چکا ہے)\n`;
+              }
+            });
+          }
+
+          savedReports[targetKey] = {
+            date: new Date().toISOString(),
+            issueIds: currentIssueIds.length ? currentIssueIds : ["ISSUE-1"]
+          };
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(savedReports));
+          } catch (e) {}
+
+          text = "Analyze this measured website/code inspection data and write a professional, phone-friendly analysis report in " + (state.lang === "ur" ? "Urdu" : "English") + " following these exact 8 sections:\n" +
+            "1. Overall verdict (1-2 sentences).\n" +
+            "2. What works.\n" +
+            "3. What does not work.\n" +
+            "4. What is slow, with the measured numbers.\n" +
+            "5. Issues (give each an ID like ISSUE-1, severity high/medium/low, location, what happens, how to fix).\n" +
+            "6. Fix plan in order.\n" +
+            "7. Fix prompt: one complete English prompt for Google AI Studio in a code block naming exact files, issue IDs, and stating: do not change design or any feature that is not listed.\n" +
+            "8. Limits (what this check could not see).\n\n" +
+            "Measured Analysis Data:\n" + JSON.stringify(analysisData, null, 2) +
+            comparisonText;
+        } catch (analErr) {}
+      }
+
       var res = await fetch(API_CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3390,6 +3490,24 @@
     });
   }
   if (el.headerNewChatBtn) el.headerNewChatBtn.addEventListener("click", newChat);
+  var sidebarAnalyzerBtn = $("sidebarAnalyzerBtn");
+  if (sidebarAnalyzerBtn) {
+    sidebarAnalyzerBtn.addEventListener("click", function () {
+      closeMenu();
+      el.input.value = "Analyze website or GitHub link: ";
+      autosize();
+      el.input.focus();
+    });
+  }
+  var menuAnalyzerBtn = $("menuAnalyzerBtn");
+  if (menuAnalyzerBtn) {
+    menuAnalyzerBtn.addEventListener("click", function () {
+      closeAttachMenu();
+      el.input.value = "Analyze website or GitHub link: ";
+      autosize();
+      el.input.focus();
+    });
+  }
   if (el.undoBtn) el.undoBtn.addEventListener("click", undo);
   if (el.redoBtn) el.redoBtn.addEventListener("click", redo);
 

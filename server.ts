@@ -9,6 +9,10 @@ import path from 'path';
 import uiStudioHandler, { renderUiConceptSvg } from './api/ui-studio.js';
 // @ts-ignore
 import imageHandler from './api/image.js';
+// @ts-ignore
+import analyzeUrlHandler from './api/analyze-url.js';
+// @ts-ignore
+import analyzeCodeHandler from './api/analyze-code.js';
 
 dotenv.config();
 
@@ -921,6 +925,16 @@ async function startServer() {
   // /api/ui-studio - Dedicated AI UI Design Studio Route
   app.post('/api/ui-studio', async (req, res) => {
     return uiStudioHandler(req, res);
+  });
+
+  // /api/analyze-url - Site & URL Analyzer Route
+  app.post('/api/analyze-url', async (req, res) => {
+    return analyzeUrlHandler(req, res);
+  });
+
+  // /api/analyze-code - Code & GitHub Analyzer Route
+  app.post('/api/analyze-code', async (req, res) => {
+    return analyzeCodeHandler(req, res);
   });
 
   if (process.env.NODE_ENV !== 'production') {
