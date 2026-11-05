@@ -313,9 +313,15 @@
   .composer { padding: 8px 16px 18px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
   .composer-inner { max-width: 740px; margin: 0 auto; }
   .pill {
-    display: flex; align-items: flex-end; gap: 6px;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 8px;
+    display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 10px 14px;
   }
+  .pill-footer {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding-top: 4px;
+  }
+  .pill-footer-left { display: flex; align-items: center; gap: 8px; }
+  .pill-footer-right { display: flex; align-items: center; gap: 8px; }
   .pill textarea {
     flex: 1; resize: none; border: 0; background: transparent;
     padding: 9px 6px; max-height: 180px; min-height: 40px; line-height: 1.6; font-size: 16px;
@@ -610,14 +616,6 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
         Projects
       </button>
-      <button type="button" class="feat" id="openUiStudioBtn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-        UI Design Studio
-      </button>
-      <button type="button" class="feat" id="sidebarImageStudioBtn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-        AI Image &amp; Photo Studio
-      </button>
       <button type="button" class="feat" id="sidebarAnalyzerBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         Site &amp; Code Analyzer
@@ -648,7 +646,7 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <img src="/logo.jpg" alt="Logo" class="brand-logo" />
-      <span class="brand" id="brandText">Vegas AI</span>
+      <span class="brand" id="brandText"></span>
       <span id="activeProjectBadge" style="display:none;align-items:center;gap:6px;font-size:12px;background:var(--line);padding:3px 9px;border-radius:12px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
         <span id="activeProjectTitleText" style="overflow:hidden;text-overflow:ellipsis;">Project</span>
         <button type="button" id="closeActiveProjectBtn" title="Exit Project" style="cursor:pointer;border:none;background:none;font-size:13px;line-height:1;color:var(--muted);">&times;</button>
@@ -668,54 +666,67 @@
 
     <form class="composer" id="composer">
       <div class="composer-inner">
-        <div class="pill">
-          <div class="attach-wrap" id="attachWrap">
-            <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach & Tools">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
-            <div class="modal-wrap" id="attachSheet" role="dialog" aria-modal="true" aria-labelledby="attachSheetTitle">
-              <div class="modal" style="margin-top:auto;border-bottom-left-radius:0;border-bottom-right-radius:0;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px;">
-                <div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;"></div>
-                <div class="modal-head" style="margin-bottom:20px;">
-                  <button class="icon-btn" id="closeAttachSheetBtn" aria-label="Close">✕</button>
-                  <h2 id="attachSheetTitle" style="font-size:16px;">Add to chat</h2>
-                  <div style="width:38px;"></div>
-                </div>
-                <div style="display:flex;justify-content:space-around;margin-bottom:24px;">
-                  <button type="button" class="attach-item" id="menuCameraBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-                    <span style="font-size:13px;">Camera</span>
-                  </button>
-                  <button type="button" class="attach-item" id="menuGalleryBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
-                    <span style="font-size:13px;">Photos</span>
-                  </button>
-                  <button type="button" class="attach-item" id="menuFilesBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-                    <span style="font-size:13px;">Files</span>
-                  </button>
-                </div>
-                <div id="projectsRow" style="background:var(--surface);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;">
-                  <div style="width:40px;height:40px;border-radius:20px;background:var(--line);display:grid;place-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
-                  <div style="flex:1;">
-                    <div style="font-size:13.5px;font-weight:500;">Change project</div>
-                    <div id="currentProjectName" style="font-size:12px;color:var(--muted);">No project selected</div>
-                  </div>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="pill" style="border-radius: 16px; padding: 12px;">
           <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
           <input type="file" id="fileInput" accept="*/*,.pdf,.txt,.md,.csv,.json,.html,.css,.js,.ts,.py" multiple hidden>
           <input type="file" id="galleryInput" accept="image/*,video/*" multiple hidden>
-          <textarea id="input" rows="1" placeholder="Reply to Vegas AI" aria-label="Message"></textarea>
-          <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-          </button>
-          <button type="submit" class="round-btn send-btn" id="sendBtn" aria-label="Send" title="Send">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-          </button>
+          
+          <textarea id="input" rows="1" placeholder="Ask anything" aria-label="Message" style="width: 100%; border: none; background: transparent; font-size: 15px; font-weight: 300; padding: 0 0 8px 0; margin-bottom: 8px; color: var(--ink); opacity: 0.9;"></textarea>
+          
+          <div class="pill-footer" style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); pt: 8px; padding-top: 8px;">
+            <div class="pill-footer-left" style="display: flex; align-items: center; gap: 8px;">
+              <div class="attach-wrap" id="attachWrap">
+                <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach & Tools" style="width: 34px; height: 32px; border-radius: 8px; background: var(--line); display: grid; place-items: center;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <div class="modal-wrap" id="attachSheet" role="dialog" aria-modal="true" aria-labelledby="attachSheetTitle">
+                  <div class="modal" style="margin-top:auto;border-bottom-left-radius:0;border-bottom-right-radius:0;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px;">
+                    <div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;"></div>
+                    <div class="modal-head" style="margin-bottom:20px;">
+                      <button class="icon-btn" id="closeAttachSheetBtn" aria-label="Close">✕</button>
+                      <h2 id="attachSheetTitle" style="font-size:16px;">Add to chat</h2>
+                      <div style="width:38px;"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-around;margin-bottom:24px;">
+                      <button type="button" class="attach-item" id="menuCameraBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                        <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                        <span style="font-size:13px;">Camera</span>
+                      </button>
+                      <button type="button" class="attach-item" id="menuGalleryBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                        <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                        <span style="font-size:13px;">Photos</span>
+                      </button>
+                      <button type="button" class="attach-item" id="menuFilesBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                        <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                        <span style="font-size:13px;">Files</span>
+                      </button>
+                    </div>
+                    <div id="projectsRow" style="background:var(--surface);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+                      <div style="width:40px;height:40px;border-radius:20px;background:var(--line);display:grid;place-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
+                      <div style="flex:1;">
+                        <div style="font-size:13.5px;font-weight:500;">Change project</div>
+                        <div id="currentProjectName" style="font-size:12px;color:var(--muted);">No project selected</div>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button type="button" id="modelSelectorBtn" style="font-size:12px; font-weight:400; padding:4px 10px; border-radius:10px; background:var(--bg); cursor:pointer; border:1px solid var(--line); color:var(--muted); display:flex; align-items:center; gap:4px;">
+                <span id="modelSelectorName">Gemini 3.5 Flash <span style="opacity:0.6; font-weight:300; margin-left:4px;">Recommended</span></span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+            </div>
+            
+            <div class="pill-footer-right" style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="round-btn" id="micBtn" aria-label="Voice input" title="Voice input" style="width: 32px; height: 32px; display: grid; place-items: center; color: var(--muted);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+              </button>
+              <button type="submit" class="round-btn send-btn" id="sendBtn" aria-label="Send" title="Send" style="width: 32px; height: 32px; background: var(--ink); color: var(--on-ink); border: none; display: grid; place-items: center; border-radius: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="attachments" id="attachments"></div>
       </div>
@@ -1336,6 +1347,22 @@
   </div>
 </div>
 
+<!-- Model Selector Modal -->
+<div class="modal-wrap" id="modelSelectorModal" role="dialog" aria-modal="true" aria-labelledby="modelSelectorModalTitle">
+  <div class="modal" style="max-width: 440px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-head">
+      <h2 id="modelSelectorModalTitle" style="font-size:16px; line-height:1.4;">Explore and choose the most powerful AI models for your specific tasks and projects (اپنی تمام ضروریات اور پروجیکٹس کے لیے بہترین اے آئی ماڈل کا انتخاب کریں)</h2>
+      <button class="icon-btn" id="closeModelSelectorModalBtn" aria-label="Close">✕</button>
+    </div>
+    <div style="padding: 10px 16px 0; font-size: 13px; color: var(--muted);">
+      Choose your preferred model for this conversation:
+    </div>
+    <div id="modelsListContainer" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px; padding: 10px 16px;">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </div>
+</div>
+
 <script src="/jszip.min.js"></script>
 <script>
   if (typeof window.JSZip === "undefined") {
@@ -1360,7 +1387,7 @@
     en: {
       appName: "Vegas AI",
       homeTitle: "How can I help you?",
-      placeholder: "Reply to Vegas AI",
+      placeholder: "Ask anything",
       newChat: "New chat",
       projects: "Projects",
       uiStudio: "UI Design Studio",
@@ -1439,7 +1466,7 @@
     ur: {
       appName: "ویگس اے آئی",
       homeTitle: "میں آپ کی کیا مدد کر سکتا ہوں؟",
-      placeholder: "ویگس اے آئی کو جواب دیں…",
+      placeholder: "کچھ بھی پوچھیں",
       newChat: "نیا چیٹ",
       projects: "پروجیکٹس",
       uiStudio: "ڈیزائن اسٹوڈیو",
@@ -1522,6 +1549,7 @@
     currentId: null,
     activeProjectId: null,
     projects: [],
+    selectedModel: "gemini-3.5-flash",
     lang: "en",
     profile: { name: "User", photo: "" },
     prefs: {
@@ -1558,6 +1586,7 @@
     attachments: $("attachments"),
     brandText: $("brandText"), homeHeading: $("homeHeading"),
     activeProjectBadge: $("activeProjectBadge"), activeProjectTitleText: $("activeProjectTitleText"), closeActiveProjectBtn: $("closeActiveProjectBtn"),
+    modelSelectorBtn: $("modelSelectorBtn"), modelSelectorModal: $("modelSelectorModal"), closeModelSelectorModalBtn: $("closeModelSelectorModalBtn"),
     micBtn: $("micBtn"), headerNewChatBtn: $("headerNewChatBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
@@ -1683,10 +1712,6 @@
     if (sNew && sNew.lastChild) sNew.lastChild.textContent = " " + t.newChat;
     var sProj = $("sidebarProjectsBtn");
     if (sProj && sProj.lastChild) sProj.lastChild.textContent = " " + (t.projects || "Projects");
-    var sUi = $("openUiStudioBtn");
-    if (sUi && sUi.lastChild) sUi.lastChild.textContent = " " + t.uiStudio;
-    var sImg = $("sidebarImageStudioBtn");
-    if (sImg && sImg.lastChild) sImg.lastChild.textContent = " " + t.photoStudio;
     var sAn = $("sidebarAnalyzerBtn");
     if (sAn && sAn.lastChild) sAn.lastChild.textContent = " " + (t.analyzer || "Site & Code Analyzer");
     var sInst = $("installPwaBtn");
@@ -2418,6 +2443,17 @@
 
     el.thread.scrollTop = el.thread.scrollHeight;
 
+    // Update dynamic placeholder
+    var t = I18N[state.lang || "en"];
+    var ph = t.placeholder || "Ask Vegas AI";
+    if (state.activeProjectId) {
+      var p = state.projects.find(function(pr) { return pr.id === state.activeProjectId; });
+      if (p) {
+        ph = (state.lang === "ur" ? "پروجیکٹ " : "Ask Vegas AI in ") + p.name + (state.lang === "ur" ? " میں پوچھیں…" : "...");
+      }
+    }
+    if (el.input) el.input.setAttribute("placeholder", ph);
+
     updateSendStopBtn();
     renderHistory();
     renderAttachments();
@@ -2767,6 +2803,7 @@
           customInstructions: state.prefs.customInstructions || "",
           responseLength: state.prefs.responseLength || "balanced",
           aiMode: state.prefs.aiMode || "fast",
+          model: state.selectedModel,
           stream: true
         })
       });
@@ -5319,6 +5356,60 @@
   }
   loadProjects();
   renderProjects();
+
+  /* ---------- Model Selector Management ---------- */
+  var AVAILABLE_MODELS = [
+    { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash", label: "Recommended" },
+    { id: "gemini-3.5-flash-lite", name: "Gemini 3.5 Flash", label: "Lite" },
+    { id: "gemini-3.1-flash", name: "Gemini 3.1 Flash", label: "Standard" },
+    { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash", label: "Lite" },
+    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", label: "Fast" },
+    { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash", label: "Lite" },
+    { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", label: "Preview" },
+    { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash", label: "Lite" },
+    { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash", label: "Legacy" },
+    { id: "gemini-1.5-flash-lite", name: "Gemini 1.5 Flash", label: "Lite" }
+  ];
+
+  function renderModels() {
+    var container = $("modelsListContainer");
+    if (!container) return;
+    container.innerHTML = AVAILABLE_MODELS.map(function (m) {
+      var isSelected = m.id === state.selectedModel;
+      return '<button type="button" class="feat" style="width:100%; display:flex; justify-content:space-between; align-items:center; ' + (isSelected ? 'background:var(--line);' : '') + '" data-model-id="' + m.id + '">' +
+             '<span>' + m.name + '</span>' +
+             '<span style="font-size:11px; opacity:0.6;">' + m.label + '</span>' +
+             '</button>';
+    }).join("");
+    container.querySelectorAll("[data-model-id]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        state.selectedModel = btn.getAttribute("data-model-id");
+        var selected = AVAILABLE_MODELS.find(function(m) { return m.id === state.selectedModel; });
+        if (el.modelSelectorBtn) {
+          var nameSpan = el.modelSelectorBtn.querySelector("#modelSelectorName");
+          if (nameSpan) {
+            nameSpan.innerHTML = selected.name + ' <span style="opacity:0.6; font-weight:400; margin-left:4px;">' + selected.label + '</span>';
+          }
+        }
+        if (el.modelSelectorModal) el.modelSelectorModal.classList.remove("show");
+        renderModels();
+      });
+    });
+  }
+
+  if (el.modelSelectorBtn) {
+    el.modelSelectorBtn.addEventListener("click", function() {
+      if (el.modelSelectorModal) el.modelSelectorModal.classList.add("show");
+      renderModels();
+    });
+  }
+
+  if (el.closeModelSelectorModalBtn) {
+    el.closeModelSelectorModalBtn.addEventListener("click", function() {
+      if (el.modelSelectorModal) el.modelSelectorModal.classList.remove("show");
+    });
+  }
+  renderModels();
 
   /* ---------- Init ---------- */
   loadState();

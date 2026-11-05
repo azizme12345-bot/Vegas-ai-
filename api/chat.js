@@ -584,7 +584,8 @@ export default async function handler(req, res) {
       httpOptions: { headers: { "User-Agent": "aistudio-build" } },
     });
     const wantStream = Boolean(body.stream);
-    const modelsToTry = MODELS_BY_MODE[aiMode] || MODELS_BY_MODE.fast;
+    const requestedModel = body.model;
+    const modelsToTry = requestedModel ? [requestedModel] : (MODELS_BY_MODE[aiMode] || MODELS_BY_MODE.fast);
     let reply = "";
     let headersSent = false;
 

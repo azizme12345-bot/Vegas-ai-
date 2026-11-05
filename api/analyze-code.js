@@ -31,7 +31,10 @@ export default async function handler(req, res) {
       const zip = await JSZip.loadAsync(cleanB64, { base64: true });
       let totalBytes = 0;
 
-      const entries = Object.keys(zip.files).filter((relPath) => {
+      const entries = Object.keys(zip.files);
+      if (entries.length === 0) throw new Error("ZIP archive is empty.");
+
+      const filteredEntries = entries.filter((relPath) => {
         const item = zip.files[relPath];
         if (item.dir) return false;
         const p = relPath.toLowerCase();
@@ -41,8 +44,10 @@ export default async function handler(req, res) {
         return true;
       });
 
+      if (filteredEntries.length === 0) throw new Error("No code files found in ZIP archive.");
+
       // Prioritize entry points and config
-      entries.sort((a, b) => {
+      filteredEntries.sort((a, b) => {
         const score = (p) => {
           if (p === 'index.html' || p === 'package.json') return 0;
           if (p.startsWith('src/') || p.startsWith('api/') || p.includes('server')) return 1;
@@ -51,7 +56,7 @@ export default async function handler(req, res) {
         return score(a) - score(b);
       });
 
-      for (const p of entries.slice(0, 35)) {
+      for (const p of filteredEntries.slice(0, 35)) {
         if (totalBytes >= 350 * 1024) break;
         try {
           const content = await zip.files[p].async('string');
@@ -62,7 +67,7 @@ export default async function handler(req, res) {
         } catch (_e) {}
       }
     } catch (err) {
-      return res.status(400).json({ error: `Failed to unpack ZIP archive: ${err.message}` });
+      return res.status(400).json({ error: `Failed to process ZIP archive: ${err.message}` });
     }
   }
   // Case 2: GitHub Repository URL
