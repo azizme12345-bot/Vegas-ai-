@@ -528,10 +528,10 @@ export default async function handler(req, res) {
     // Extract live URL / GitHub / YouTube context if present in the latest message
     const urlContext = await extractUrlContext(latestUserText);
 
-    // Build multi-turn contents array for Gemini (last 10 messages)
+    // Build multi-turn contents array for Gemini (last 30 messages)
     let contents = [];
     if (rawMessages && rawMessages.length) {
-      const recent = rawMessages.slice(-10);
+      const recent = rawMessages.slice(-30);
       contents = recent.map((m, idx) => {
         const parts = [];
         if (Array.isArray(m.media)) {
@@ -588,6 +588,15 @@ export default async function handler(req, res) {
     let reply = "";
     let headersSent = false;
 
+    let thinkingBudget = 0;
+    if (aiMode === "deep") {
+      thinkingBudget = 2048;
+    } else if (aiMode === "balanced") {
+      thinkingBudget = 512;
+    } else {
+      thinkingBudget = 0;
+    }
+
     for (const modelName of modelsToTry) {
       try {
         const stream = await ai.models.generateContentStream({
@@ -595,29 +604,39 @@ export default async function handler(req, res) {
           contents,
           config: {
             systemInstruction: systemPrompt,
-            thinkingConfig: { thinkingBudget: 0 },
+            thinkingConfig: { thinkingBudget },
+            maxOutputTokens: 65536,
           },
         });
 
         let fullText = "";
-        for await (const chunk of stream) {
-          if (chunk.text) {
-            fullText += chunk.text;
-            if (wantStream) {
-              if (!headersSent) {
-                res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-                res.setHeader("Cache-Control", "no-cache, no-transform");
-                res.setHeader("Connection", "keep-alive");
-                headersSent = true;
+        let streamCutoff = false;
+        try {
+          for await (const chunk of stream) {
+            if (chunk.text) {
+              fullText += chunk.text;
+              if (wantStream) {
+                if (!headersSent) {
+                  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+                  res.setHeader("Cache-Control", "no-cache, no-transform");
+                  res.setHeader("Connection", "keep-alive");
+                  headersSent = true;
+                }
+                res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
+                if (typeof res.flush === "function") res.flush();
               }
-              res.write(`data: ${JSON.stringify({ text: chunk.text })}\n\n`);
-              if (typeof res.flush === "function") res.flush();
             }
+          }
+        } catch (_streamErr) {
+          streamCutoff = true;
+          if (headersSent) {
+            const cutoffMsg = "\n\n[The answer was cut off. Please try again. / جواب ادھورا رہ گیا۔ براہ کرم دوبارہ کوشش کریں۔]";
+            res.write(`data: ${JSON.stringify({ text: cutoffMsg })}\n\n`);
           }
         }
 
         if (fullText) {
-          reply = fullText.trim();
+          reply = fullText.trim() + (streamCutoff ? "\n\n[The answer was cut off. Please try again. / جواب ادھورا رہ گیا۔ براہ کرم دوبارہ کوشش کریں۔]" : "");
           break;
         }
       } catch (_err) {

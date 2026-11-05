@@ -1638,7 +1638,10 @@
         });
       } else {
         closeMenu();
-        showVoiceError("ایپ انسٹال کرنے کے لیے براؤزر کے مینو (⋮ یا Share) سے 'Install App' یا 'Add to Home Screen' منتخب کریں۔");
+        var msg = (state && state.lang === "ur")
+          ? "ایپ انسٹال کرنے کے لیے براؤزر کے مینو (⋮ یا Share) سے 'Install App' یا 'Add to Home Screen' منتخب کریں۔"
+          : "To install the app, open your browser menu (⋮ or Share) and select 'Install App' or 'Add to Home Screen'.";
+        showVoiceError(msg);
       }
     });
     window.addEventListener('appinstalled', function() {
@@ -1989,7 +1992,11 @@
         return;
       }
 
-      playNextSpeechChunk(index, btn);
+      setTimeout(function () {
+        if (currentSpeakingIndex === index) {
+          playNextSpeechChunk(index, btn);
+        }
+      }, 150);
     } catch (e) {
       stopSpeaking();
       showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");

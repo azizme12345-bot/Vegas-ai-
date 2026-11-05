@@ -746,7 +746,7 @@ ${htmlCode.slice(0, 12000)}`;
         const reviewResp = await callGeminiText(reviewParts, reviewSystemInstruction, apiKey, false, { maxOutputTokens: 65536 });
         if (reviewResp && reviewResp.text) {
           const reviewedCode = extractHtmlCode(reviewResp.text);
-          if (isCompleteHtml(reviewedCode)) {
+          if (isCompleteHtml(reviewedCode) && reviewedCode.length >= htmlCode.length * 0.7) {
             htmlCode = reviewedCode;
           }
         }
@@ -788,7 +788,7 @@ ${htmlCode.slice(0, 12000)}`;
     return res.status(400).json({ error: "Unknown UI Studio action." });
   } catch (err) {
     return res.status(500).json({
-      error: "AI UI Design Studio میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔",
+      error: (err && err.message) || "AI UI Design Studio میں خرابی پیش آئی۔ براہ کرم دوبارہ کوشش کریں۔",
     });
   }
 }

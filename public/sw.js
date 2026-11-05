@@ -1,4 +1,4 @@
-const CACHE_NAME = "vegas-ai-cache-v1";
+const CACHE_NAME = "vegas-ai-cache-v2";
 const ASSETS = [
   "/",
   "/index.html",
@@ -6,12 +6,17 @@ const ASSETS = [
   "/icon.svg",
   "/apple-touch-icon.png",
   "/pwa-192x192.png",
-  "/pwa-512x512.png"
+  "/pwa-512x512.png",
+  "/logo.jpg"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.all(
+        ASSETS.map((url) => cache.add(url).catch(() => {}))
+      );
+    })
   );
   self.skipWaiting();
 });
@@ -34,8 +39,10 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+        if (response && response.status === 200 && response.type === "basic") {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+        }
         return response;
       })
       .catch(() => caches.match(event.request))

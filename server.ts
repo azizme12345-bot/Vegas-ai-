@@ -478,7 +478,7 @@ async function startServer() {
         systemPrompt += `\nصارف کی خصوصی ہدایات: ${String(customInstructions).trim()}`;
       }
 
-      const recentMessages = chatMessages.slice(-10);
+      const recentMessages = chatMessages.slice(-30);
       const geminiContents = recentMessages.map((m: any, idx: number) => {
         const parts: any[] = [];
         if (m.media && Array.isArray(m.media)) {
@@ -549,11 +549,14 @@ async function startServer() {
                   res.setHeader('X-Model-Switch', 'Switching to backup model...');
                 }
               }
+              const thinkingBudget = aiMode === 'deep' ? 2048 : aiMode === 'balanced' ? 512 : 0;
               const stream = await activeGemini.models.generateContentStream({
                 model: modelId,
                 contents: geminiContents,
                 config: {
                   systemInstruction: systemPrompt,
+                  thinkingConfig: { thinkingBudget },
+                  maxOutputTokens: 65536,
                 },
               });
               let fullText = '';
