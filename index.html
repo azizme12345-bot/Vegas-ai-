@@ -1286,7 +1286,6 @@
 
   var API_CHAT_URL = "/api/chat";
   var API_IMAGE_URL = "/api/image";
-  var API_TTS_URL = "/api/tts";
   var API_TRANSCRIBE_URL = "/api/transcribe";
 
   var I18N = {
@@ -1739,31 +1738,21 @@
     return String(text || "")
       .replace(/```[\s\S]*?```/g, " ")
       .replace(/`[^`]*`/g, " ")
+      .replace(/https?:\/\/[^\s]+/g, " ")
       .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-      .replace(/[#*_~>|]/g, " ")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/[#*_~>|\\{}[\]()\-+=]/g, " ")
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
 
-  function prefetchTts(text) {
-    var cleanText = cleanTextForSpeech(text);
-    if (!cleanText || clientTtsCache[cleanText]) return;
-    fetch(API_TTS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: cleanText })
-    }).then(function (r) {
-      return r.ok ? r.json() : null;
-    }).then(function (d) {
-      if (d && d.audio) clientTtsCache[cleanText] = d.audio;
-    }).catch(function () {});
-  }
-
-  /* ---------- Natural Young Female Voice Engine (~20-25 yrs) ---------- */
-  function getYoungFemaleVoice(isUrdu) {
+  function getBestVoice(text) {
     if (!("speechSynthesis" in window)) return null;
-    var voices = (window.speechSynthesis.getVoices() || []).concat(availableVoices);
+    var voices = (window.speechSynthesis.getVoices() || []).concat(availableVoices || []);
     if (!voices.length) return null;
+
+    var isUrdu = (state && state.lang === "ur") || hasUrdu(text);
 
     if (isUrdu) {
       var urVoices = voices.filter(function (v) {
@@ -1775,7 +1764,7 @@
         var m = urVoices.find(function (v) { return urPriorities[i].test(v.name); });
         if (m) return m;
       }
-      return urVoices[0] || voices.find(function(v){ return (v.lang||"").toLowerCase().indexOf("ur") !== -1; }) || voices[0] || null;
+      return urVoices[0] || voices.find(function (v) { return (v.lang || "").toLowerCase().indexOf("ur") !== -1; }) || null;
     } else {
       var enVoices = voices.filter(function (v) {
         return (v.lang || "").toLowerCase().indexOf("en") !== -1;
@@ -1793,44 +1782,7 @@
     }
   }
 
-  function playYoungFemaleSpeech(text, index, btn) {
-    if (!("speechSynthesis" in window)) {
-      if (btn) updateSpeakerBtn(btn, false);
-      currentSpeakingIndex = null;
-      return;
-    }
-
-    try {
-      if (window.speechSynthesis.paused) {
-        try { window.speechSynthesis.resume(); } catch (re) {}
-      }
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      var isU = (state.lang === "ur" && hasUrdu(text)) || hasUrdu(text);
-      var voice = getYoungFemaleVoice(isU);
-
-      if (voice) {
-        u.voice = voice;
-      } else {
-        u.lang = isU ? "ur-PK" : "en-US";
-      }
-
-      // Tuned for ~20-25 yrs young woman: clear, soft, youthful, energetic, non-robotic
-      u.pitch = isU ? 1.15 : 1.18;
-      u.rate = 1.02;
-      u.volume = 1.0;
-
-      u.onend = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
-      u.onerror = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
-
-      window.speechSynthesis.speak(u);
-    } catch (e) {
-      if (btn) updateSpeakerBtn(btn, false);
-      currentSpeakingIndex = null;
-    }
-  }
-
-  async function speak(text, index, btn) {
+  function speak(text, index, btn) {
     if (!text) return;
 
     if (currentSpeakingIndex === index) {
@@ -1848,47 +1800,47 @@
       return;
     }
 
-    // 1. Cached audio check for 0ms instant playback
-    if (clientTtsCache[cleanText]) {
-      try {
-        sharedAudio.src = clientTtsCache[cleanText];
-        sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
-        sharedAudio.onerror = function () { playYoungFemaleSpeech(cleanText, index, btn); };
-        var pCached = sharedAudio.play();
-        if (pCached && pCached.catch) {
-          pCached.catch(function () { playYoungFemaleSpeech(cleanText, index, btn); });
-        }
-        return;
-      } catch (err) {}
+    if (!("speechSynthesis" in window)) {
+      showVoiceError("اس زبان کے لیے اس ڈیوائس پر کوئی آواز موجود نہیں۔ اپنے فون کی سیٹنگز میں ٹیکسٹ ٹو اسپیچ وائس انسٹال کریں۔");
+      stopSpeaking();
+      return;
     }
 
-    // 2. High-fidelity neural voice from /api/tts for human-like natural Urdu and English
-    fetch(API_TTS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: cleanText })
-    })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) {
-        if (currentSpeakingIndex !== index) return;
-        if (d && d.audio) {
-          clientTtsCache[cleanText] = d.audio;
-          sharedAudio.src = d.audio;
-          sharedAudio.onended = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
-          sharedAudio.onerror = function () { playYoungFemaleSpeech(cleanText, index, btn); };
-          var p = sharedAudio.play();
-          if (p && p.catch) {
-            p.catch(function () { playYoungFemaleSpeech(cleanText, index, btn); });
-          }
-        } else {
-          playYoungFemaleSpeech(cleanText, index, btn);
-        }
-      })
-      .catch(function () {
+    try {
+      if (window.speechSynthesis.paused) {
+        try { window.speechSynthesis.resume(); } catch (re) {}
+      }
+      window.speechSynthesis.cancel();
+
+      var isUrdu = (state && state.lang === "ur") || hasUrdu(cleanText);
+      var voice = getBestVoice(cleanText);
+
+      var u = new SpeechSynthesisUtterance(cleanText);
+      if (voice) {
+        u.voice = voice;
+      } else {
+        u.lang = isUrdu ? "ur-PK" : "en-US";
+      }
+
+      u.pitch = isUrdu ? 1.12 : 1.15;
+      u.rate = 1.0;
+      u.volume = 1.0;
+
+      u.onend = function () { if (currentSpeakingIndex === index) stopSpeaking(); };
+      u.onerror = function (err) {
         if (currentSpeakingIndex === index) {
-          playYoungFemaleSpeech(cleanText, index, btn);
+          stopSpeaking();
+          if (err && err.error && err.error !== "canceled" && err.error !== "interrupted") {
+            showVoiceError("اس زبان کے لیے اس ڈیوائس پر کوئی آواز موجود نہیں۔ اپنے فون کی سیٹنگز میں ٹیکسٹ ٹو اسپیچ وائس انسٹال کریں۔");
+          }
         }
-      });
+      };
+
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      stopSpeaking();
+      showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");
+    }
   }
 
   /* ---------- SVG Icons for Message Actions (NO TEXT) ---------- */
@@ -2580,9 +2532,6 @@
 
         state.prefs.totalRequests = (state.prefs.totalRequests || 0) + 1;
         savePrefs();
-        if (assistantMsg.text && !assistantMsg.failed) {
-          prefetchTts(assistantMsg.text);
-        }
       } else {
         var data = await res.json();
         if (typIndicator.parentNode) typIndicator.remove();
@@ -2610,10 +2559,6 @@
         savePrefs();
         el.messages.appendChild(createMessageElement(assistantMsg, c.messages.length - 1));
         el.thread.scrollTop = el.thread.scrollHeight;
-
-        if (assistantMsg.text && !assistantMsg.failed) {
-          prefetchTts(assistantMsg.text);
-        }
       }
     } catch (err) {
       if (typIndicator.parentNode) typIndicator.remove();
@@ -3273,11 +3218,16 @@
   }
 
   function transcribeBlobWithBackend(blob, mimeType) {
-    if (!blob || blob.size < 400) {
+    if (!blob || blob.size < 300) {
       resetMicUI();
       if (!recTranscript.trim()) {
         showVoiceError("کوئی آواز سنائی نہیں دی۔ براہ کرم دوبارہ بولنے کی کوشش کریں۔");
       }
+      return;
+    }
+    if (blob.size > 4 * 1024 * 1024) {
+      resetMicUI();
+      showVoiceError("ریکارڈنگ بہت لمبی ہے۔ براہ کرم مختصر جملوں میں بولیں۔");
       return;
     }
     el.input.setAttribute("placeholder", "آواز کو تحریر میں بدلا جا رہا ہے...");
@@ -3408,7 +3358,10 @@
             if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) mimeType = "audio/webm;codecs=opus";
             else if (MediaRecorder.isTypeSupported("audio/webm")) mimeType = "audio/webm";
             else if (MediaRecorder.isTypeSupported("audio/mp4")) mimeType = "audio/mp4";
+            else if (MediaRecorder.isTypeSupported("audio/aac")) mimeType = "audio/aac";
+            else if (MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")) mimeType = "audio/ogg;codecs=opus";
             else if (MediaRecorder.isTypeSupported("audio/ogg")) mimeType = "audio/ogg";
+            else if (MediaRecorder.isTypeSupported("audio/wav")) mimeType = "audio/wav";
           }
 
           try {
