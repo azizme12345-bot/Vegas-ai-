@@ -1976,66 +1976,61 @@
     return chunks;
   }
 
-  function playNextSpeechChunk(index, btn) {
-    if (currentSpeakingIndex !== index || currentSpeechQueueIndex >= currentSpeechQueue.length) {
+  function playAudioUrl(url, index, btn) {
+    if (!url) {
       stopSpeaking();
       return;
     }
+    stopSpeaking();
+    currentSpeakingIndex = index;
+    if (btn) updateSpeakerBtn(btn, true);
 
-    var chunk = currentSpeechQueue[currentSpeechQueueIndex];
-    var voiceObj = getBestVoiceForText(chunk, availableVoices);
+    try {
+      sharedAudio.pause();
+      sharedAudio.currentTime = 0;
+    } catch (e) {}
 
-    var u = new SpeechSynthesisUtterance(chunk);
-    activeUtterances.push(u);
+    sharedAudio.src = url;
+    sharedAudio.onended = function () {
+      stopSpeaking();
+    };
+    sharedAudio.onerror = function () {
+      stopSpeaking();
+      showVoiceError("Failed to play audio.");
+    };
 
-    function cleanupUtterance() {
-      var idx = activeUtterances.indexOf(u);
-      if (idx !== -1) activeUtterances.splice(idx, 1);
+    var p = sharedAudio.play();
+    if (p && typeof p.then === "function") {
+      p.catch(function () {
+        stopSpeaking();
+      });
     }
+  }
 
-    if (voiceObj.voice) {
-      u.voice = voiceObj.voice;
+  function fallbackToBackendTts(text, index, btn) {
+    if (clientTtsCache[text]) {
+      playAudioUrl(clientTtsCache[text], index, btn);
+      return;
     }
-    u.lang = voiceObj.langCode || "en-US";
-    u.pitch = 1.0;
-    u.rate = 1.0;
-    u.volume = 1.0;
-
-    u.onend = function () {
-      cleanupUtterance();
-      if (currentSpeakingIndex === index) {
-        currentSpeechQueueIndex++;
-        if (currentSpeechQueueIndex < currentSpeechQueue.length) {
-          playNextSpeechChunk(index, btn);
+    fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.audio) {
+          clientTtsCache[text] = data.audio;
+          if (currentSpeakingIndex === index) {
+            playAudioUrl(data.audio, index, btn);
+          }
         } else {
           stopSpeaking();
         }
-      }
-    };
-
-    u.onerror = function (err) {
-      cleanupUtterance();
-      var errName = (err && (err.error || err.type || err.message)) || "speech-error";
-      if (errName === "interrupted" || errName === "canceled") {
-        return;
-      }
-      stopSpeaking();
-      var isUrduMsg = detectTextLanguage(chunk) === "ur";
-      showVoiceError(isUrduMsg
-        ? "آواز میں مسئلہ پیش آیا (" + errName + ")۔"
-        : "Speech error (" + errName + ").");
-    };
-
-    try {
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
-      window.speechSynthesis.speak(u);
-    } catch (e) {
-      cleanupUtterance();
-      stopSpeaking();
-      showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");
-    }
+      })
+      .catch(function () {
+        stopSpeaking();
+      });
   }
 
   function speak(text, index, btn) {
@@ -2050,41 +2045,21 @@
     currentSpeakingIndex = index;
     if (btn) updateSpeakerBtn(btn, true);
 
+    // Warm-up and unlock audio context immediately within the user-click gesture
+    try {
+      sharedAudio.play().then(function() {
+        sharedAudio.pause();
+      }).catch(function() {});
+    } catch (e) {}
+
     var cleanText = cleanTextForSpeech(text);
     if (!cleanText) {
       stopSpeaking();
       return;
     }
 
-    if (!("speechSynthesis" in window)) {
-      showVoiceError("اس ڈیوائس پر ٹیکسٹ ٹو اسپیچ وائس دستیاب نہیں ہے۔ / Text-to-speech is not supported on this device.");
-      stopSpeaking();
-      return;
-    }
-
-    try {
-      if (window.speechSynthesis.paused) {
-        try { window.speechSynthesis.resume(); } catch (re) {}
-      }
-      try { window.speechSynthesis.cancel(); } catch (ce) {}
-
-      currentSpeechQueue = splitTextIntoSentences(cleanText);
-      currentSpeechQueueIndex = 0;
-
-      if (!currentSpeechQueue.length) {
-        stopSpeaking();
-        return;
-      }
-
-      // Resume context and speak first chunk immediately
-      if (window.speechSynthesis.paused) {
-        try { window.speechSynthesis.resume(); } catch (re) {}
-      }
-      playNextSpeechChunk(index, btn);
-    } catch (e) {
-      stopSpeaking();
-      showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");
-    }
+    // Always fetch and play via high-speed neural TTS for 100% reliability in preview and mobile
+    fallbackToBackendTts(cleanText, index, btn);
   }
 
   /* ---------- SVG Icons for Message Actions (NO TEXT) ---------- */
