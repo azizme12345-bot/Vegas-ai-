@@ -1723,6 +1723,8 @@
   var currentSpeechQueue = [];
   var currentSpeechQueueIndex = 0;
 
+  var activeUtterances = [];
+
   function stopSpeaking() {
     if (currentAudio) {
       try { currentAudio.pause(); currentAudio.currentTime = 0; } catch (e) {}
@@ -1734,6 +1736,7 @@
     if ("speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch (e) {}
     }
+    activeUtterances = [];
     currentSpeechQueue = [];
     currentSpeechQueueIndex = 0;
     if (currentSpeakingIndex !== null) {
@@ -1808,6 +1811,13 @@
     var lang = detectTextLanguage(text);
     var genderPref = (state && state.voiceGender) || "female";
     var defaultLangCode = lang === "ur" ? "ur-PK" : lang === "hi" ? "hi-IN" : "en-US";
+
+    if (lang === "ur" && voices.length > 0) {
+      var hasUrdu = voices.some(function (v) { return (v.lang || "").toLowerCase().indexOf("ur") !== -1; });
+      if (!hasUrdu) {
+        showVoiceError("اردو آواز کے لیے اپنے فون کی سیٹنگز میں وائس انسٹال کریں۔ / Install a text-to-speech voice in your phone settings.");
+      }
+    }
 
     if (!voices.length) return { voice: null, langCode: defaultLangCode };
 
@@ -1895,6 +1905,13 @@
     var voiceObj = getBestVoiceForText(chunk, availableVoices);
 
     var u = new SpeechSynthesisUtterance(chunk);
+    activeUtterances.push(u);
+
+    function cleanupUtterance() {
+      var idx = activeUtterances.indexOf(u);
+      if (idx !== -1) activeUtterances.splice(idx, 1);
+    }
+
     if (voiceObj.voice) {
       u.voice = voiceObj.voice;
     }
@@ -1904,6 +1921,7 @@
     u.volume = 1.0;
 
     u.onend = function () {
+      cleanupUtterance();
       if (currentSpeakingIndex === index) {
         currentSpeechQueueIndex++;
         if (currentSpeechQueueIndex < currentSpeechQueue.length) {
@@ -1915,33 +1933,25 @@
     };
 
     u.onerror = function (err) {
-      if (currentSpeakingIndex === index) {
-        if (err && err.error && err.error !== "canceled" && err.error !== "interrupted") {
-          currentSpeechQueueIndex++;
-          if (currentSpeechQueueIndex < currentSpeechQueue.length) {
-            playNextSpeechChunk(index, btn);
-          } else {
-            stopSpeaking();
-            var isUrduMsg = detectTextLanguage(chunk) === "ur";
-            showVoiceError(isUrduMsg
-              ? "اس ڈیوائس پر وائس چلانے میں مسئلہ پیش آیا۔"
-              : "An error occurred while playing speech on this device.");
-          }
-        } else {
-          stopSpeaking();
-        }
-      }
+      cleanupUtterance();
+      var errName = (err && (err.error || err.type || err.message)) || "speech-error";
+      stopSpeaking();
+      var isUrduMsg = detectTextLanguage(chunk) === "ur";
+      showVoiceError(isUrduMsg
+        ? "آواز میں خرابی پیش آئی (" + errName + ")۔"
+        : "Speech error (" + errName + ").");
     };
 
     try {
       window.speechSynthesis.speak(u);
     } catch (e) {
+      cleanupUtterance();
       stopSpeaking();
       showVoiceError("آواز چلانے میں خرابی پیش آئی۔ / Failed to play speech.");
     }
   }
 
-  async function speak(text, index, btn) {
+  function speak(text, index, btn) {
     if (!text) return;
 
     if (currentSpeakingIndex === index) {
@@ -1961,20 +1971,6 @@
 
     if (!("speechSynthesis" in window)) {
       showVoiceError("اس ڈیوائس پر کوئی وائس دستیاب نہیں ہے۔ اپنے فون کی سیٹنگز میں ٹیکسٹ ٹو اسپیچ وائس انسٹال کریں۔ / No voice is available on this device. Install a text-to-speech voice in your phone settings.");
-      stopSpeaking();
-      return;
-    }
-
-    var voicesList = await fetchVoicesWithRetry();
-    if (!voicesList || !voicesList.length) {
-      try { voicesList = window.speechSynthesis.getVoices() || []; } catch (e) {}
-    }
-
-    if (!voicesList || !voicesList.length) {
-      var isUrdu = detectTextLanguage(cleanText) === "ur";
-      showVoiceError(isUrdu
-        ? "اس ڈیوائس پر کوئی وائس دستیاب نہیں ہے۔ اپنے فون کی سیٹنگز میں ٹیکسٹ ٹو اسپیچ وائس انسٹال کریں۔"
-        : "No voice is available on this device. Install a text-to-speech voice in your phone settings.");
       stopSpeaking();
       return;
     }
@@ -4822,7 +4818,7 @@
     if (!studioState.generatedHtml) {
       if (stEl.stage2Status) {
         stEl.stage2Status.hidden = false;
-        stEl.stage2Status.textContent = "Please generate HTML code first before downloading assets.";
+        stEl.stage2Status.textContent = "Please generate the HTML first.";
       }
       return;
     }
@@ -4830,6 +4826,7 @@
     var sel = studioState.selectedConcept || {};
     var title = String(sel.title || "UI Design Website").trim();
     var safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "ui-project";
+    var zipFileName = safeName + "-all-assets.zip";
     var origBtnHtml = stEl.downloadZipBtn ? stEl.downloadZipBtn.innerHTML : "";
 
     if (stEl.downloadZipBtn) {
@@ -4838,17 +4835,10 @@
     }
     if (stEl.stage2Status) {
       stEl.stage2Status.hidden = false;
-      stEl.stage2Status.textContent = "Bundling HTML, CSS, JavaScript, design mockups, and all images into a single ZIP file...";
+      stEl.stage2Status.textContent = "Bundling HTML, CSS, and JavaScript assets into ZIP file...";
     }
 
     try {
-      // 1. Ensure we have the rasterized PNG mockup of the selected design
-      var mockupPngUrl = sel.pngUrl || "";
-      if (!mockupPngUrl && (sel.imageUrl || sel.fallbackSvgUrl)) {
-        mockupPngUrl = await rasterizeToPngDataUrl(sel.imageUrl || sel.fallbackSvgUrl, sel.appType || studioState.appType);
-      }
-
-      // Check if JSZip is available in browser
       var JSZipConstructor = window.JSZip;
       if (typeof JSZipConstructor === "function") {
         var zip = new JSZipConstructor();
@@ -4911,13 +4901,14 @@
           }
         });
 
-        // Add Mockup PNG to images/
-        if (mockupPngUrl && mockupPngUrl.indexOf("data:image/") === 0) {
-          var comma = mockupPngUrl.indexOf(",");
+        // Add real design preview image ONLY when a real raster image exists
+        var realImgUrl = sel.pngUrl || sel.imageUrl || "";
+        if (realImgUrl && (realImgUrl.indexOf("data:image/png") === 0 || realImgUrl.indexOf("data:image/jpeg") === 0 || realImgUrl.indexOf("data:image/webp") === 0)) {
+          var comma = realImgUrl.indexOf(",");
           if (comma !== -1) {
-            var b64Mockup = mockupPngUrl.slice(comma + 1);
-            var isPng = mockupPngUrl.indexOf("data:image/png") === 0;
-            var ext = isPng ? "png" : mockupPngUrl.indexOf("data:image/svg") === 0 ? "svg" : "jpg";
+            var b64Mockup = realImgUrl.slice(comma + 1);
+            var isPng = realImgUrl.indexOf("data:image/png") === 0;
+            var ext = isPng ? "png" : "jpg";
             imgFolder.file("ui-design-mockup." + ext, b64Mockup, { base64: true });
           }
         }
@@ -4956,7 +4947,6 @@
           cleanedHtml = cleanedHtml + '\n<script src="js/script.js" defer><' + '/script>';
         }
 
-        // Design specification
         var designSpec = {
           title: title,
           appType: sel.appType || studioState.appType || "desktop",
@@ -4966,53 +4956,24 @@
           uiSpec: sel.uiSpec || {},
           originalPrompt: studioState.prompt || "",
           generatedAt: new Date().toISOString(),
-          generator: "Vikawa AI - AI UI Design Studio"
+          generator: "Vegas AI - AI UI Design Studio"
         };
 
         var readmeMd = "# " + title + " — Web UI Assets Package\n\n" +
-          "Generated with **Vikawa AI — AI UI Design Studio**.\n\n" +
-          "This bundle contains the complete, modular production files for your generated website design, with HTML, external CSS, JavaScript, visual mockups, and referenced assets organized into dedicated folders.\n\n" +
-          "---\n\n" +
-          "## 📁 Package Structure\n\n" +
+          "Generated with **Vegas AI — AI UI Design Studio**.\n\n" +
+          "This bundle contains the complete, modular production files for your generated website design.\n\n" +
           "```\n" +
-          "├── index.html                 # Main website entry point (modular & linked)\n" +
-          "├── standalone.html            # All-in-one single-file version (self-contained)\n" +
+          "├── index.html                 # Main website entry point\n" +
+          "├── standalone.html            # All-in-one single file\n" +
           "├── css/\n" +
-          "│   └── styles.css             # Extracted stylesheet with responsive layouts\n" +
+          "│   └── styles.css             # Extracted stylesheet\n" +
           "├── js/\n" +
-          "│   └── script.js              # Extracted interactive JavaScript functionality\n" +
+          "│   └── script.js              # Extracted interactive JavaScript\n" +
           "├── images/\n" +
-          "│   ├── ui-design-mockup.png   # High-resolution Stage 1 UI visual design concept\n" +
-          "│   ├── favicon.svg            # Branded vector app icon\n" +
-          "│   └── asset_*.*              # Extracted graphic and media assets\n" +
-          "├── design-spec.json           # Design tokens, color palette, and metadata\n" +
-          "└── README.md                  # Project overview & running instructions\n" +
-          "```\n\n" +
-          "---\n\n" +
-          "## 🎨 Color Palette & Design Tokens\n\n" +
-          "- **Primary Accent**: `" + (palette.primary || "#2563EB") + "`\n" +
-          "- **Primary Text**: `" + (palette.primaryText || "#FFFFFF") + "`\n" +
-          "- **Background**: `" + (palette.bg || "#FAFAFA") + "`\n" +
-          "- **Surface**: `" + (palette.surface || "#FFFFFF") + "`\n" +
-          "- **Text Ink**: `" + (palette.text || "#0F172A") + "`\n" +
-          "- **Subtle Muted**: `" + (palette.muted || "#64748B") + "`\n" +
-          "- **Border**: `" + (palette.border || "#E2E8F0") + "`\n\n" +
-          "---\n\n" +
-          "## 🚀 How to Run\n\n" +
-          "### Method 1: Instant Browser View (Zero Setup)\n" +
-          "Simply double-click `index.html` (or `standalone.html`) to open it directly in any modern browser.\n\n" +
-          "### Method 2: Local Web Server (Recommended)\n" +
-          "Run a local server:\n\n" +
-          "```bash\n" +
-          "npx serve .\n" +
-          "# or\n" +
-          "python3 -m http.server 8000\n" +
-          "```\n\n" +
-          "---\n\n" +
-          "## 🛠️ Customization\n\n" +
-          "- **Styling**: Edit `css/styles.css` to update styling.\n" +
-          "- **Interactions**: Edit `js/script.js` to modify behavior.\n" +
-          "- **Content**: Update text directly inside `index.html`.\n";
+          "│   └── favicon.svg            # Branded icon\n" +
+          "├── design-spec.json           # Design tokens\n" +
+          "└── README.md\n" +
+          "```\n";
 
         zip.file("index.html", cleanedHtml);
         zip.file("standalone.html", rawHtml);
@@ -5030,16 +4991,14 @@
         var zipUrl = URL.createObjectURL(zipBlob);
         var a = document.createElement("a");
         a.href = zipUrl;
-        a.download = safeName + "-all-assets.zip";
+        a.download = zipFileName;
         document.body.appendChild(a);
         a.click();
-        setTimeout(function () {
-          a.remove();
-          URL.revokeObjectURL(zipUrl);
-        }, 1500);
+        setTimeout(function () { a.remove(); }, 1000);
 
         if (stEl.stage2Status) {
-          stEl.stage2Status.textContent = "✓ Complete assets package downloaded as " + safeName + "-all-assets.zip!";
+          stEl.stage2Status.hidden = false;
+          stEl.stage2Status.innerHTML = '✓ ZIP downloaded! If download did not start, tap here: <a href="' + zipUrl + '" download="' + zipFileName + '" style="color:var(--ink);font-weight:600;text-decoration:underline;margin-left:6px;">Save ZIP</a>';
         }
       } else {
         // Fallback: Use backend /api/ui-studio bundle-zip endpoint
@@ -5050,7 +5009,7 @@
             action: "bundle-zip",
             html: studioState.generatedHtml,
             selectedConcept: sel,
-            designImageBase64: mockupPngUrl,
+            designImageBase64: sel.pngUrl || sel.imageUrl || "",
             referenceImage: studioState.referenceImage
               ? { data: studioState.referenceImage.data, mimeType: studioState.referenceImage.mimeType }
               : null,
@@ -5071,16 +5030,14 @@
         var fallbackUrl = URL.createObjectURL(blob);
         var dlA = document.createElement("a");
         dlA.href = fallbackUrl;
-        dlA.download = data.filename || (safeName + "-all-assets.zip");
+        dlA.download = data.filename || zipFileName;
         document.body.appendChild(dlA);
         dlA.click();
-        setTimeout(function () {
-          dlA.remove();
-          URL.revokeObjectURL(fallbackUrl);
-        }, 1500);
+        setTimeout(function () { dlA.remove(); }, 1000);
 
         if (stEl.stage2Status) {
-          stEl.stage2Status.textContent = "✓ Assets bundled and downloaded as " + (data.filename || (safeName + "-all-assets.zip")) + "!";
+          stEl.stage2Status.hidden = false;
+          stEl.stage2Status.innerHTML = '✓ ZIP downloaded! If download did not start, tap here: <a href="' + fallbackUrl + '" download="' + (data.filename || zipFileName) + '" style="color:var(--ink);font-weight:600;text-decoration:underline;margin-left:6px;">Save ZIP</a>';
         }
       }
 
@@ -5095,7 +5052,8 @@
       }
     } catch (err) {
       if (stEl.stage2Status) {
-        stEl.stage2Status.textContent = "Failed to bundle assets: " + ((err && err.message) || "Unknown error");
+        stEl.stage2Status.hidden = false;
+        stEl.stage2Status.textContent = "ZIP failed: " + ((err && err.message) || err || "Unknown error");
       }
       if (stEl.downloadZipBtn) {
         stEl.downloadZipBtn.disabled = false;

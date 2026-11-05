@@ -57,7 +57,8 @@ function sanitizeHex(color, fallback) {
 }
 
 /**
-  Renders a clean concept preview SVG showcasing the color palette swatches and short text summary.
+ * Renders a clean concept preview SVG showcasing the color palette swatches and short text summary.
+ * No drawn templates or fake SVG mockups.
  */
 export function renderUiConceptSvg(concept, index = 0) {
   const defaultPalettes = [
@@ -141,9 +142,11 @@ async function callGeminiText(parts, systemInstruction, apiKey, wantJson = false
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(
         apiKey
       )}`;
+      // Gemini 3.x Flash models support 65536 max output tokens
+      const defaultMaxTokens = 65536;
       const genConfig = wantJson
-        ? { responseMimeType: "application/json", temperature: 0.7, ...extraConfig }
-        : { temperature: 0.5, ...extraConfig };
+        ? { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: defaultMaxTokens, ...extraConfig }
+        : { temperature: 0.5, maxOutputTokens: defaultMaxTokens, ...extraConfig };
       const payload = {
         contents: [{ role: "user", parts }],
         generationConfig: genConfig,
@@ -408,7 +411,7 @@ Return ONLY valid JSON with this exact structure:
         text: `User Design Request: ${prompt || "Create a modern UI design inspired by this reference image"}\nTarget Platform / App Type: ${appType}\nGenerate 3 visually distinct UI design concepts in JSON.`,
       });
 
-      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, true, { maxOutputTokens: 8192 });
+      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, true, { maxOutputTokens: 65536 });
       const parsed = parseJsonSafe(aiResp?.text);
       let rawConcepts = Array.isArray(parsed?.concepts) ? parsed.concepts.slice(0, 3) : [];
 
@@ -569,7 +572,7 @@ Return ONLY valid JSON with:
         }\n\nUser Customization Instruction:\n"${instruction}"\n\nReturn updated JSON.`,
       });
 
-      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, true, { maxOutputTokens: 8192 });
+      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, true, { maxOutputTokens: 65536 });
       const parsed = parseJsonSafe(aiResp?.text);
       const updatedConcept = parsed?.concept || {
         ...slimConcept,
@@ -685,7 +688,7 @@ If any issues exist, fix them. Return ONLY the final corrected HTML code startin
         });
       }
 
-      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, false, { maxOutputTokens: 8192 });
+      const aiResp = await callGeminiText(parts, systemInstruction, apiKey, false, { maxOutputTokens: 65536 });
       let rawCode = aiResp?.text || "";
 
       function extractHtmlCode(text) {
@@ -719,7 +722,7 @@ Please provide the COMPLETE single-file HTML document starting with <!DOCTYPE ht
 
 ${htmlCode.slice(0, 12000)}`;
 
-        const finishResp = await callGeminiText([{ text: finishPrompt }], systemInstruction, apiKey, false, { maxOutputTokens: 8192 });
+        const finishResp = await callGeminiText([{ text: finishPrompt }], systemInstruction, apiKey, false, { maxOutputTokens: 65536 });
         const finishedCode = extractHtmlCode(finishResp?.text || "");
         if (isCompleteHtml(finishedCode)) {
           htmlCode = finishedCode;
@@ -740,7 +743,7 @@ ${htmlCode.slice(0, 12000)}`;
         const reviewParts = [
           { text: `Review and fix any layout, content, responsiveness or font bugs in this HTML code:\n\n${htmlCode}` },
         ];
-        const reviewResp = await callGeminiText(reviewParts, reviewSystemInstruction, apiKey, false, { maxOutputTokens: 8192 });
+        const reviewResp = await callGeminiText(reviewParts, reviewSystemInstruction, apiKey, false, { maxOutputTokens: 65536 });
         if (reviewResp && reviewResp.text) {
           const reviewedCode = extractHtmlCode(reviewResp.text);
           if (isCompleteHtml(reviewedCode)) {
@@ -866,24 +869,18 @@ export async function createAssetsZipBundle({
     }
   });
 
+  // Include design image only if a real raster image exists (PNG/JPG data)
   let mockupImgData = designImageBase64 || concept.pngUrl || concept.imageUrl || "";
-  if (mockupImgData && mockupImgData.startsWith("data:image/")) {
+  if (mockupImgData && (mockupImgData.startsWith("data:image/png") || mockupImgData.startsWith("data:image/jpeg") || mockupImgData.startsWith("data:image/webp"))) {
     const comma = mockupImgData.indexOf(",");
     if (comma !== -1) {
       const b64 = mockupImgData.slice(comma + 1);
       const isPng = mockupImgData.startsWith("data:image/png");
-      const ext = isPng ? "png" : mockupImgData.startsWith("data:image/svg") ? "svg" : "jpg";
+      const ext = isPng ? "png" : "jpg";
       try {
         imgFolder.file(`ui-design-mockup.${ext}`, Buffer.from(b64, "base64"));
       } catch (_e) {}
     }
-  } else if (concept.fallbackSvgUrl && concept.fallbackSvgUrl.startsWith("data:image/svg+xml")) {
-    try {
-      const svgDecoded = decodeURIComponent(
-        concept.fallbackSvgUrl.replace("data:image/svg+xml;utf8,", "")
-      );
-      imgFolder.file("ui-design-mockup.svg", svgDecoded);
-    } catch (_e) {}
   }
 
   if (referenceImage && referenceImage.data) {
@@ -977,7 +974,7 @@ This package bundles the complete, modular production assets for the generated w
 Simply double-click \`index.html\` (or \`standalone.html\`) to open it directly in any modern browser.
 
 ### Method 2: Local Web Server (Recommended)
-Run a local static server to test all features:
+Run a local static server:
 
 \`\`\`bash
 # Using npx serve
