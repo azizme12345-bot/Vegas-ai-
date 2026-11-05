@@ -860,8 +860,10 @@ async function startServer() {
         console.warn('Fast Neural TTS fallback error:', fastTtsErr?.message || fastTtsErr);
       }
 
-      // 3. Fallback: Gemini TTS models with natural female voice "Kore"
+      // 3. Fallback: Gemini TTS models with natural voice (Puck/Charon for male, Kore for female)
       if (geminiAi) {
+        const reqGender = String(req.body.gender || 'male').toLowerCase();
+        const selectedVoice = reqGender === 'female' ? 'Kore' : 'Puck';
         const ttsModels = [
           'gemini-3.1-flash-tts-preview',
           'gemini-3.8-flash-tts',
@@ -887,7 +889,7 @@ async function startServer() {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
                   voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: 'Kore' },
+                    prebuiltVoiceConfig: { voiceName: selectedVoice },
                   },
                 },
               },

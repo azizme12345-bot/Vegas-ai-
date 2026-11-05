@@ -1497,7 +1497,7 @@
       pinCode: "",
       totalRequests: 0,
       voiceLang: "auto",
-      voiceGender: "female"
+      voiceGender: "male"
     }
   };
   var undoStack = [], redoStack = [];
@@ -2012,10 +2012,11 @@
       playAudioUrl(clientTtsCache[text], index, btn);
       return;
     }
+    var gender = (state && state.prefs && state.prefs.voiceGender) || "male";
     fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: text })
+      body: JSON.stringify({ text: text, gender: gender })
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
