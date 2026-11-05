@@ -1,3 +1,5 @@
+import OpenAI from "openai";
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -23,6 +25,7 @@ export default async function handler(req, res) {
     }
 
     const text = String(body.text || "").trim();
+    const gender = String(body.gender || "male").toLowerCase();
     if (!text) {
       return res.status(400).json({ error: "Text is required" });
     }
@@ -43,6 +46,24 @@ export default async function handler(req, res) {
       clean = clean.slice(0, 1200);
     }
 
+    // 1. OpenAI TTS with male/female voice selection
+    const openAiKey = (process.env.OPENAI_API_KEY || "").trim();
+    if (openAiKey && !openAiKey.startsWith("YOUR_")) {
+      try {
+        const openai = new OpenAI({ apiKey: openAiKey });
+        const voiceChoice = gender === "female" ? "nova" : "echo";
+        const mp3Res = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: voiceChoice,
+          input: clean,
+        });
+        const ab = await mp3Res.arrayBuffer();
+        const dataUri = `data:audio/mpeg;base64,${Buffer.from(ab).toString("base64")}`;
+        return res.status(200).json({ audio: dataUri });
+      } catch (_openAiErr) {}
+    }
+
+    // 2. High-speed neural voice fallback
     const isUrdu = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(clean);
     const isHindi = /[\u0900-\u097F]/.test(clean);
     const tl = isUrdu ? "ur" : isHindi ? "hi" : "en";

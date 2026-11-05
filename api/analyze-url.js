@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed. Use POST.' });
   }
 
-  const { url, language } = req.body || {};
+  const { url } = req.body || {};
   if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'URL is required.' });
   }
@@ -71,7 +71,9 @@ export default async function handler(req, res) {
     const fetchRes = await fetch(cleanUrl, {
       method: 'GET',
       headers: {
-        'User-Agent': 'VegasAI-SiteAnalyzer/1.0 (+https://vegas.ai)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 VegasAI/1.0',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,ur;q=0.8'
       },
       redirect: 'follow',
       signal: controller.signal,
@@ -99,18 +101,27 @@ export default async function handler(req, res) {
   const speedLabel = totalTime < 1000 ? 'fast' : totalTime <= 3000 ? 'ok' : 'slow';
   const isHeavy = sizeBytes > 2 * 1024 * 1024;
 
-  // Cheerio analysis
+  // Cheerio HTML analysis
   const $ = cheerio.load(htmlText);
   const title = $('title').text().trim();
   const metaDesc = $('meta[name="description"]').attr('content') || '';
   const viewport = $('meta[name="viewport"]').attr('content') || '';
   const langAttr = $('html').attr('lang') || '';
+  const canonical = $('link[rel="canonical"]').attr('href') || '';
+  const robotsMeta = $('meta[name="robots"]').attr('content') || '';
+
   const ogTags = {
     title: $('meta[property="og:title"]').attr('content') || '',
     description: $('meta[property="og:description"]').attr('content') || '',
     image: $('meta[property="og:image"]').attr('content') || '',
   };
-  const h1Count = $('h1').length;
+
+  const h1Elements = [];
+  $('h1').each((_, el) => {
+    const txt = $(el).text().trim();
+    if (txt && h1Elements.length < 5) h1Elements.push(txt);
+  });
+  const h2Count = $('h2').length;
 
   let imagesWithoutAlt = 0;
   $('img').each((_, el) => {
@@ -146,15 +157,15 @@ export default async function handler(req, res) {
     }
   });
 
-  // Check up to 30 assets & 20 internal links in parallel
-  const assetsToCheck = externalAssets.slice(0, 30);
-  const linksToCheck = Array.from(internalLinks).slice(0, 20);
+  // Check external assets & links
+  const assetsToCheck = externalAssets.slice(0, 25);
+  const linksToCheck = Array.from(internalLinks).slice(0, 15);
 
   const [assetResults, linkResults] = await Promise.all([
     Promise.all(
       assetsToCheck.map(async (u) => {
         try {
-          const r = await fetch(u, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+          const r = await fetch(u, { method: 'HEAD', signal: AbortSignal.timeout(3500) });
           return { url: u, ok: r.ok, status: r.status };
         } catch (_e) {
           return { url: u, ok: false, status: 0 };
@@ -164,7 +175,7 @@ export default async function handler(req, res) {
     Promise.all(
       linksToCheck.map(async (u) => {
         try {
-          const r = await fetch(u, { method: 'HEAD', signal: AbortSignal.timeout(4000) });
+          const r = await fetch(u, { method: 'HEAD', signal: AbortSignal.timeout(3500) });
           return { url: u, ok: r.ok, status: r.status };
         } catch (_e) {
           return { url: u, ok: false, status: 0 };
@@ -175,6 +186,101 @@ export default async function handler(req, res) {
 
   const brokenAssets = assetResults.filter((a) => !a.ok);
   const brokenLinks = linkResults.filter((l) => !l.ok || l.status >= 400);
+
+  // 5. Google Indexability Assessment (noindex, robots.txt, sitemap, canonical, title, description)
+  let robotsTxtFound = false;
+  let robotsDisallowsRoot = false;
+  let sitemapUrlFromRobots = '';
+  let sitemapReachable = false;
+
+  try {
+    const origin = new URL(finalUrl).origin;
+    const robotsRes = await fetch(`${origin}/robots.txt`, { method: 'GET', signal: AbortSignal.timeout(3000) });
+    if (robotsRes.ok) {
+      robotsTxtFound = true;
+      const robotsTxtBody = await robotsRes.text();
+      // Check for Disallow: /
+      if (/(?:user-agent:\s*\*|user-agent:\s*googlebot)[\s\S]*?disallow:\s*\/\s*(?:\r?\n|$)/i.test(robotsTxtBody)) {
+        robotsDisallowsRoot = true;
+      }
+      const sitemapMatch = robotsTxtBody.match(/sitemap:\s*([^\r\n]+)/i);
+      if (sitemapMatch) {
+        sitemapUrlFromRobots = sitemapMatch[1].trim();
+      }
+    }
+    // Check sitemap availability
+    const testSitemapUrl = sitemapUrlFromRobots || `${origin}/sitemap.xml`;
+    const sitemapProbe = await fetch(testSitemapUrl, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    if (sitemapProbe.ok) sitemapReachable = true;
+  } catch (_e) {}
+
+  const hasNoindex = /noindex/i.test(robotsMeta);
+  const hasNofollow = /nofollow/i.test(robotsMeta);
+
+  const indexabilityReasons = [];
+  let isGoogleIndexable = true;
+
+  if (statusCode >= 400) {
+    isGoogleIndexable = false;
+    indexabilityReasons.push(`HTTP status code is error (${statusCode}).`);
+  }
+  if (hasNoindex) {
+    isGoogleIndexable = false;
+    indexabilityReasons.push('Meta tag contains "noindex", blocking Google from indexing this page.');
+  }
+  if (robotsDisallowsRoot) {
+    isGoogleIndexable = false;
+    indexabilityReasons.push('robots.txt disallows crawling of the root path ("Disallow: /").');
+  }
+  if (!title) {
+    indexabilityReasons.push('Page is missing a <title> tag, which hinders search appearance.');
+  }
+  if (!metaDesc) {
+    indexabilityReasons.push('Page is missing a meta description tag.');
+  }
+  if (canonical) {
+    indexabilityReasons.push(`Canonical URL declared: ${canonical}`);
+  } else {
+    indexabilityReasons.push('No canonical URL tag defined (not blocking, but recommended).');
+  }
+  if (robotsTxtFound) {
+    indexabilityReasons.push(`robots.txt found and accessible (${robotsDisallowsRoot ? 'Disallows crawling' : 'Allows crawling'}).`);
+  } else {
+    indexabilityReasons.push('No robots.txt found at domain root (Google will crawl by default).');
+  }
+  if (sitemapReachable) {
+    indexabilityReasons.push(`Sitemap accessible at ${sitemapUrlFromRobots || 'sitemap.xml'}.`);
+  }
+
+  // 6. How Google Sees & Understands the Page (Purely HTML based, no definitive claims)
+  // Structured Data / Schema check
+  const jsonLdSchemas = [];
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      const data = JSON.parse($(el).text());
+      if (data && (data['@type'] || data['@context'])) jsonLdSchemas.push(data['@type'] || 'Custom Schema');
+    } catch (_e) {}
+  });
+
+  const firstParagraph = $('main p, article p, p').first().text().trim().slice(0, 160);
+  const googleSnippetPreview = {
+    title: title || 'Untitled Page',
+    displayUrl: finalUrl,
+    snippet: metaDesc || firstParagraph || 'No description preview available.'
+  };
+
+  const semanticLayout = {
+    hasMain: $('main').length > 0,
+    hasHeader: $('header').length > 0,
+    hasNav: $('nav').length > 0,
+    hasArticle: $('article').length > 0,
+    hasFooter: $('footer').length > 0,
+    headingsHierarchy: {
+      h1Count: $('h1').length,
+      h1Samples: h1Elements,
+      h2Count: h2Count
+    }
+  };
 
   return res.status(200).json({
     metrics: {
@@ -193,10 +299,29 @@ export default async function handler(req, res) {
       metaDesc,
       viewport,
       langAttr,
+      canonical,
+      robotsMeta,
       ogTags,
-      h1Count,
+      h1Count: $('h1').length,
+      h2Count,
       imagesWithoutAlt,
       emptyOrHashLinks,
+    },
+    googleIndexability: {
+      isIndexable: isGoogleIndexable,
+      hasNoindex,
+      hasNofollow,
+      robotsTxtFound,
+      robotsDisallowsRoot,
+      sitemapReachable,
+      canonical,
+      reasons: indexabilityReasons
+    },
+    googleInterpretation: {
+      disclaimer: 'Based strictly on parsed HTML structure and visible metadata. Google uses proprietary algorithms and search engines cannot be guaranteed.',
+      snippetPreview: googleSnippetPreview,
+      structuredData: jsonLdSchemas,
+      semanticLayout
     },
     assets: {
       checked: assetsToCheck.length,

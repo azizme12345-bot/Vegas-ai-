@@ -606,6 +606,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         New chat
       </button>
+      <button type="button" class="feat" id="sidebarProjectsBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        Projects
+      </button>
       <button type="button" class="feat" id="openUiStudioBtn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
         UI Design Studio
@@ -645,6 +649,10 @@
       </button>
       <img src="/logo.jpg" alt="Logo" class="brand-logo" />
       <span class="brand" id="brandText">Vegas AI</span>
+      <span id="activeProjectBadge" style="display:none;align-items:center;gap:6px;font-size:12px;background:var(--line);padding:3px 9px;border-radius:12px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <span id="activeProjectTitleText" style="overflow:hidden;text-overflow:ellipsis;">Project</span>
+        <button type="button" id="closeActiveProjectBtn" title="Exit Project" style="cursor:pointer;border:none;background:none;font-size:13px;line-height:1;color:var(--muted);">&times;</button>
+      </span>
       <button type="button" class="icon-btn" id="headerNewChatBtn" title="New Chat" aria-label="New chat">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       </button>
@@ -665,43 +673,37 @@
             <button type="button" class="round-btn" id="attachBtn" aria-label="Attach" title="Attach & Tools">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             </button>
-            <div class="attach-menu" id="attachMenu" role="menu">
-              <button type="button" class="attach-menu-item" id="menuCameraBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <span id="menuCameraText">Camera</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuFilesBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <span id="menuFilesText">Files &amp; PDF</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuGalleryBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <span id="menuGalleryText">Gallery</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuImgGenBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-                <span id="menuImgGenText">AI Image Generator</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuPhotoEditBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                <span id="menuPhotoEditText">AI Photo Editor</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuUiStudioBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-                <span id="menuUiStudioText">UI Design Studio</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuAnalyzerBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-                <span id="menuAnalyzerText">Site &amp; Code Analyzer</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuPromptBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span id="menuPromptText">AI Tools</span>
-              </button>
-              <button type="button" class="attach-menu-item" id="menuLangSwitchBtn" role="menuitem">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                <span id="menuLangText">Language: English</span>
-              </button>
+            <div class="modal-wrap" id="attachSheet" role="dialog" aria-modal="true" aria-labelledby="attachSheetTitle">
+              <div class="modal" style="margin-top:auto;border-bottom-left-radius:0;border-bottom-right-radius:0;border-top-left-radius:24px;border-top-right-radius:24px;padding:16px;">
+                <div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;"></div>
+                <div class="modal-head" style="margin-bottom:20px;">
+                  <button class="icon-btn" id="closeAttachSheetBtn" aria-label="Close">✕</button>
+                  <h2 id="attachSheetTitle" style="font-size:16px;">Add to chat</h2>
+                  <div style="width:38px;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-around;margin-bottom:24px;">
+                  <button type="button" class="attach-item" id="menuCameraBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+                    <span style="font-size:13px;">Camera</span>
+                  </button>
+                  <button type="button" class="attach-item" id="menuGalleryBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                    <span style="font-size:13px;">Photos</span>
+                  </button>
+                  <button type="button" class="attach-item" id="menuFilesBtn" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                    <div style="width:50px;height:50px;border-radius:25px;background:var(--line);display:grid;place-items:center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                    <span style="font-size:13px;">Files</span>
+                  </button>
+                </div>
+                <div id="projectsRow" style="background:var(--surface);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+                  <div style="width:40px;height:40px;border-radius:20px;background:var(--line);display:grid;place-items:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
+                  <div style="flex:1;">
+                    <div style="font-size:13.5px;font-weight:500;">Change project</div>
+                    <div id="currentProjectName" style="font-size:12px;color:var(--muted);">No project selected</div>
+                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              </div>
             </div>
           </div>
           <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
@@ -1305,6 +1307,35 @@
   </div>
 </div>
 
+<!-- Projects Modal -->
+<div class="modal-wrap" id="projectsModal" role="dialog" aria-modal="true" aria-labelledby="projectsModalTitle">
+  <div class="modal" style="max-width: 540px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-head">
+      <h2 id="projectsModalTitle" style="display:flex;align-items:center;gap:8px;font-size:16px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <span>Projects (پروجیکٹس)</span>
+      </h2>
+      <button class="icon-btn" id="closeProjectsModalBtn" aria-label="Close projects dialog">✕</button>
+    </div>
+
+    <!-- Create New Project Section -->
+    <div style="background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px;">
+      <div style="font-weight:600;font-size:14px;">+ Create New Project (نیا پروجیکٹ بنائیں)</div>
+      <input type="text" id="newProjectName" placeholder="Project Name (e.g. My Website, Vegas Mobile App)" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;width:100%;font-size:14px;" />
+      <textarea id="newProjectDesc" rows="2" placeholder="Project Description (e.g. Goals, stack, key files, or instructions...)" style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;width:100%;font-size:13.5px;resize:vertical;"></textarea>
+      <div style="display:flex;justify-content:flex-end;">
+        <button type="button" class="studio-primary-btn" id="createNewProjectBtn" style="padding:7px 16px;font-size:13.5px;">Create &amp; Open Project</button>
+      </div>
+    </div>
+
+    <!-- Existing Projects List -->
+    <div style="font-weight:600;font-size:13.5px;color:var(--muted);margin-bottom:6px;">Your Projects</div>
+    <div id="projectsListContainer" style="overflow-y:auto;flex:1;min-height:120px;display:flex;flex-direction:column;gap:8px;">
+      <!-- Populated dynamically via JS -->
+    </div>
+  </div>
+</div>
+
 <script src="/jszip.min.js"></script>
 <script>
   if (typeof window.JSZip === "undefined") {
@@ -1331,6 +1362,7 @@
       homeTitle: "How can I help you?",
       placeholder: "Reply to Vegas AI",
       newChat: "New chat",
+      projects: "Projects",
       uiStudio: "UI Design Studio",
       photoStudio: "AI Image & Photo Studio",
       analyzer: "Site & Code Analyzer",
@@ -1409,6 +1441,7 @@
       homeTitle: "میں آپ کی کیا مدد کر سکتا ہوں؟",
       placeholder: "ویگس اے آئی کو جواب دیں…",
       newChat: "نیا چیٹ",
+      projects: "پروجیکٹس",
       uiStudio: "ڈیزائن اسٹوڈیو",
       photoStudio: "تصویر و فوٹو اسٹوڈیو",
       analyzer: "سائٹ اور کوڈ تجزیہ",
@@ -1487,6 +1520,8 @@
   var state = {
     chats: [],
     currentId: null,
+    activeProjectId: null,
+    projects: [],
     lang: "en",
     profile: { name: "User", photo: "" },
     prefs: {
@@ -1512,7 +1547,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var el = {
     sidebar: $("sidebar"), scrim: $("scrim"), menuBtn: $("menuBtn"), closeMenu: $("closeMenu"),
-    newChatBtn: $("newChatBtn"), searchInput: $("searchInput"), history: $("history"),
+    newChatBtn: $("newChatBtn"), sidebarProjectsBtn: $("sidebarProjectsBtn"), searchInput: $("searchInput"), history: $("history"),
     home: $("home"), thread: $("thread"), messages: $("messages"),
     composer: $("composer"), input: $("input"), sendBtn: $("sendBtn"),
     attachWrap: $("attachWrap"), attachBtn: $("attachBtn"), attachMenu: $("attachMenu"),
@@ -1522,9 +1557,14 @@
     cameraInput: $("cameraInput"), fileInput: $("fileInput"), galleryInput: $("galleryInput"),
     attachments: $("attachments"),
     brandText: $("brandText"), homeHeading: $("homeHeading"),
+    activeProjectBadge: $("activeProjectBadge"), activeProjectTitleText: $("activeProjectTitleText"), closeActiveProjectBtn: $("closeActiveProjectBtn"),
     micBtn: $("micBtn"), headerNewChatBtn: $("headerNewChatBtn"), undoBtn: $("undoBtn"), redoBtn: $("redoBtn"),
     avatar: $("avatar"), profileName: $("profileName"), settingsBtn: $("settingsBtn"),
     settingsModal: $("settingsModal"), closeSettings: $("closeSettings"),
+    projectsModal: $("projectsModal"), closeProjectsModalBtn: $("closeProjectsModalBtn"),
+    projectsRow: $("projectsRow"),
+    newProjectName: $("newProjectName"), newProjectDesc: $("newProjectDesc"), createNewProjectBtn: $("createNewProjectBtn"),
+    projectsListContainer: $("projectsListContainer"),
     settingsAvatar: $("settingsAvatar"), photoBtn: $("photoBtn"), photoInput: $("photoInput"),
     nameInput: $("nameInput"), customInstInput: $("customInstInput"), quickToolSelect: $("quickToolSelect"),
     voiceLangSelect: $("voiceLangSelect"), voiceGenderSelect: $("voiceGenderSelect"),
@@ -1533,10 +1573,28 @@
     privacyToggleBtn: $("privacyToggleBtn"), pinLockBtn: $("pinLockBtn"), feedbackBtn: $("feedbackBtn"),
     clearAll: $("clearAll"), installPwaBtn: $("installPwaBtn"),
     previewModal: $("previewModal"), closePreview: $("closePreview"), previewFrame: $("previewFrame"),
-    lockModal: $("lockModal"), unlockPinInput: $("unlockPinInput"), unlockBtn: $("unlockBtn")
+    lockModal: $("lockModal"), unlockPinInput: $("unlockPinInput"), unlockBtn: $("unlockBtn"),
+    attachSheet: $("attachSheet"), closeAttachSheetBtn: $("closeAttachSheetBtn")
   };
 
   /* ---------- Storage ---------- */
+  var PROJECTS_KEY = "vegas_projects";
+  function loadProjects() {
+    try {
+      var rawP = localStorage.getItem(PROJECTS_KEY);
+      state.projects = rawP ? JSON.parse(rawP) : [];
+      if (!Array.isArray(state.projects)) state.projects = [];
+    } catch (e) {
+      state.projects = [];
+    }
+  }
+
+  function saveProjects() {
+    try {
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(state.projects || []));
+    } catch (e) {}
+  }
+
   function loadState() {
     try {
       var raw = localStorage.getItem(KEY);
@@ -1554,6 +1612,7 @@
       var pr = localStorage.getItem(PREFS_KEY);
       if (pr) state.prefs = Object.assign(state.prefs, JSON.parse(pr));
     } catch (e) {}
+    loadProjects();
   }
 
   function savePrefs() {
@@ -1561,6 +1620,7 @@
   }
 
   function saveChats() {
+    saveProjects();
     if (!state.prefs.saveHistory) return;
     try {
       var clean = state.chats.map(function (c) {
@@ -1621,6 +1681,8 @@
     // Sidebar items
     var sNew = $("newChatBtn");
     if (sNew && sNew.lastChild) sNew.lastChild.textContent = " " + t.newChat;
+    var sProj = $("sidebarProjectsBtn");
+    if (sProj && sProj.lastChild) sProj.lastChild.textContent = " " + (t.projects || "Projects");
     var sUi = $("openUiStudioBtn");
     if (sUi && sUi.lastChild) sUi.lastChild.textContent = " " + t.uiStudio;
     var sImg = $("sidebarImageStudioBtn");
@@ -1743,7 +1805,12 @@
 
   /* ---------- Helpers ---------- */
   function uid() { return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function current() { return state.chats.find(function (c) { return c.id === state.currentId; }) || null; }
+  function current() {
+    if (state.activeProjectId) {
+      return (state.projects || []).find(function (p) { return p.id === state.activeProjectId; }) || null;
+    }
+    return state.chats.find(function (c) { return c.id === state.currentId; }) || null;
+  }
 
   function escapeHtml(s) {
     return String(s || "").replace(/[&<>"']/g, function (ch) {
@@ -1890,7 +1957,7 @@
       try { voices = window.speechSynthesis.getVoices() || []; } catch (e) {}
     }
     var lang = detectTextLanguage(text);
-    var genderPref = (state && state.voiceGender) || "female";
+    var genderPref = (state && state.prefs && state.prefs.voiceGender) || "male";
     var defaultLangCode = lang === "ur" ? "ur-PK" : lang === "hi" ? "hi-IN" : "en-US";
 
     if (lang === "ur" && voices.length > 0) {
@@ -1991,6 +2058,17 @@
     } catch (e) {}
 
     sharedAudio.src = url;
+    var g = (state && state.prefs && state.prefs.voiceGender) || "male";
+    if (g === "male") {
+      try {
+        sharedAudio.playbackRate = 0.90;
+        sharedAudio.preservesPitch = false;
+        sharedAudio.mozPreservesPitch = false;
+        sharedAudio.webkitPreservesPitch = false;
+      } catch (e) {}
+    } else {
+      try { sharedAudio.playbackRate = 1.0; } catch (e) {}
+    }
     sharedAudio.onended = function () {
       stopSpeaking();
     };
@@ -3272,17 +3350,28 @@
 
   /* ---------- Plus (+) Menu: Camera, Files, Gallery, Image Gen, AI Tools ---------- */
   function closeAttachMenu() {
-    if (el.attachMenu) el.attachMenu.classList.remove("open");
+    if (el.attachSheet) el.attachSheet.classList.remove("show");
   }
 
   el.attachBtn.addEventListener("click", function (e) {
     e.stopPropagation();
-    if (el.attachMenu) {
-      el.attachMenu.classList.toggle("open");
-    } else {
-      el.fileInput.click();
+    if (el.attachSheet) {
+      el.attachSheet.classList.toggle("show");
     }
   });
+
+  if (el.closeAttachSheetBtn) {
+    el.closeAttachSheetBtn.addEventListener("click", function() {
+      if (el.attachSheet) el.attachSheet.classList.remove("show");
+    });
+  }
+
+  if (el.projectsRow) {
+    el.projectsRow.addEventListener("click", function() {
+      if (el.attachSheet) el.attachSheet.classList.remove("show");
+      if (el.projectsModal) el.projectsModal.classList.add("show");
+    });
+  }
 
   if (el.menuCameraBtn) {
     el.menuCameraBtn.addEventListener("click", function () {
@@ -3690,6 +3779,13 @@
       el.input.value = "Analyze website or GitHub link: ";
       autosize();
       el.input.focus();
+    });
+  }
+  var sidebarProjectsBtn = $("sidebarProjectsBtn");
+  if (sidebarProjectsBtn) {
+    sidebarProjectsBtn.addEventListener("click", function () {
+      closeMenu();
+      if (el.projectsModal) el.projectsModal.classList.add("show");
     });
   }
   var menuAnalyzerBtn = $("menuAnalyzerBtn");
@@ -5164,6 +5260,65 @@
       downloadDataUrlImage(studioState.lightboxUrl, studioState.lightboxName);
     });
   }
+
+  /* ---------- Projects Management ---------- */
+  function renderProjects() {
+    if (!el.projectsListContainer) return;
+    el.projectsListContainer.innerHTML = state.projects.map(function (p) {
+      return '<button type="button" class="feat" style="width:100%;" data-project-id="' + p.id + '">' +
+             '<div style="font-weight:500;">' + escapeHtml(p.name) + '</div>' +
+             '<div style="font-size:12px;color:var(--muted);">' + escapeHtml(p.desc || "") + '</div>' +
+             '</button>';
+    }).join("");
+    el.projectsListContainer.querySelectorAll("[data-project-id]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        state.activeProjectId = btn.getAttribute("data-project-id");
+        if (el.projectsModal) el.projectsModal.classList.remove("show");
+        if (el.activeProjectBadge) {
+          el.activeProjectBadge.style.display = "flex";
+          var p = state.projects.find(function(pr) { return pr.id === state.activeProjectId; });
+          if (el.activeProjectTitleText && p) el.activeProjectTitleText.textContent = p.name;
+        }
+        render();
+      });
+    });
+  }
+
+  if (el.createNewProjectBtn) {
+    el.createNewProjectBtn.addEventListener("click", function() {
+      var name = el.newProjectName.value.trim();
+      var desc = el.newProjectDesc.value.trim();
+      if (!name) return;
+      var newP = { id: uid(), name: name, desc: desc };
+      state.projects.push(newP);
+      state.activeProjectId = newP.id;
+      saveProjects();
+      renderProjects();
+      el.newProjectName.value = ""; el.newProjectDesc.value = "";
+      if (el.projectsModal) el.projectsModal.classList.remove("show");
+      if (el.activeProjectBadge) {
+        el.activeProjectBadge.style.display = "flex";
+        if (el.activeProjectTitleText) el.activeProjectTitleText.textContent = name;
+      }
+      render();
+    });
+  }
+
+  if (el.closeProjectsModalBtn) {
+    el.closeProjectsModalBtn.addEventListener("click", function() {
+      if (el.projectsModal) el.projectsModal.classList.remove("show");
+    });
+  }
+
+  if (el.closeActiveProjectBtn) {
+    el.closeActiveProjectBtn.addEventListener("click", function() {
+      state.activeProjectId = null;
+      if (el.activeProjectBadge) el.activeProjectBadge.style.display = "none";
+      render();
+    });
+  }
+  loadProjects();
+  renderProjects();
 
   /* ---------- Init ---------- */
   loadState();

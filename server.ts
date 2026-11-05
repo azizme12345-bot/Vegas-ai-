@@ -778,12 +778,14 @@ async function startServer() {
         return res.json({ audio: cached });
       }
 
-      // 1. OpenAI TTS "nova" (Natural Human Female Voice) if valid OpenAI key is configured
+      // 1. OpenAI TTS (echo for male, nova for female) if valid OpenAI key is configured
+      const gender = String(req.body?.gender || 'male').toLowerCase();
+      const openAiVoice = gender === 'female' ? 'nova' : 'echo';
       if (openaiClient && !isModelExhausted('tts-1')) {
         try {
           const mp3Response = await openaiClient.audio.speech.create({
             model: 'tts-1',
-            voice: 'nova',
+            voice: openAiVoice,
             input: clean,
           });
           const arrayBuffer = await mp3Response.arrayBuffer();
