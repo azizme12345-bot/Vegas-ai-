@@ -322,6 +322,7 @@ async function startServer() {
         customInstructions,
         responseLength,
         aiMode,
+        model,
       } = req.body;
 
       const activeGemini = getGeminiAi() || geminiAi;
@@ -342,6 +343,7 @@ async function startServer() {
 
         if (activeGemini) {
           const sttModels = [
+            'gemini-2.5-flash',
             'gemini-3.1-flash-lite',
             'gemini-3.8-flash',
             'gemini-3.5-flash-lite',
@@ -497,9 +499,16 @@ async function startServer() {
               ).replace(/\s/g, '');
               const cleanItemMime =
                 String(item.mimeType).split(';')[0].trim() || 'application/octet-stream';
-              parts.push({
-                inlineData: { data: cleanData, mimeType: cleanItemMime },
-              });
+              const isSupportedMime = /^(image\/(png|jpeg|webp|heic|heif)|audio\/(wav|mp3|aiff|aac|ogg|flac|webm)|video\/(mp4|mpeg|mov|avi|x-flv|mpg|webm|wmv|3gpp)|application\/pdf)$/i.test(cleanItemMime);
+              if (isSupportedMime) {
+                parts.push({
+                  inlineData: { data: cleanData, mimeType: cleanItemMime },
+                });
+              } else {
+                parts.push({
+                  text: `\n[Attached File: ${item.name || 'document'} (${cleanItemMime}, size: ~${Math.round(cleanData.length * 0.75)} bytes)]\n`,
+                });
+              }
             }
           }
         }
@@ -534,10 +543,13 @@ async function startServer() {
 
       for (const provider of order) {
         if (provider === 'gemini' && activeGemini) {
-          const models =
-            aiMode === 'deep'
-              ? ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flash-latest']
-              : ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'];
+          const fallbackChain = [
+            model,
+            ...(aiMode === 'deep'
+              ? ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest']
+              : ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'])
+          ].filter(Boolean);
+          const models = Array.from(new Set(fallbackChain));
           let attemptCount = 0;
           for (const modelId of models) {
             if (isModelExhausted(modelId)) continue;

@@ -3350,6 +3350,51 @@
         renderAttachments();
       };
       pdfReader.readAsDataURL(f);
+    } else if (ext === "zip" && window.JSZip) {
+      var jz = new window.JSZip();
+      jz.loadAsync(f).then(function(zipObj) {
+        var fileNames = Object.keys(zipObj.files);
+        var readPromises = [];
+        var maxFiles = 30;
+        var count = 0;
+        var summary = "[ZIP Archive: " + (f.name || "archive.zip") + "]\nContained Files (" + fileNames.length + " total):\n" + fileNames.slice(0, 50).join("\n") + "\n\n--- Extracted File Contents ---\n";
+
+        fileNames.forEach(function(fname) {
+          var entry = zipObj.files[fname];
+          if (!entry.dir && count < maxFiles) {
+            var parts = fname.split(".");
+            var entryExt = parts.length > 1 ? parts.pop().toLowerCase() : "";
+            var codeExts = ["js","ts","jsx","tsx","json","html","css","md","txt","py","svg","yml","yaml","env","c","cpp","java","sql","xml","php","sh"];
+            if (codeExts.indexOf(entryExt) !== -1) {
+              count++;
+              readPromises.push(entry.async("string").then(function(text) {
+                return "\n[File: " + fname + "]\n" + text.slice(0, 15000);
+              }).catch(function() { return ""; }));
+            }
+          }
+        });
+
+        Promise.all(readPromises).then(function(contents) {
+          summary += contents.filter(Boolean).join("\n");
+          pending.push({
+            type: "file",
+            name: f.name || "archive.zip",
+            url: url,
+            mimeType: "text/plain",
+            textContent: summary
+          });
+          renderAttachments();
+        });
+      }).catch(function() {
+        pending.push({
+          type: "file",
+          name: f.name || "archive.zip",
+          url: url,
+          mimeType: "text/plain",
+          textContent: "[ZIP Archive: " + (f.name || "archive.zip") + " (" + Math.round(f.size / 1024) + " KB)]"
+        });
+        renderAttachments();
+      });
     } else {
       var textExts = ["txt", "js", "ts", "jsx", "tsx", "py", "html", "css", "json", "md", "csv", "c", "cpp", "h", "java", "sql", "xml", "yaml", "yml", "sh", "bat", "php", "go", "rs", "rb", "log", "env"];
       var isTextFile = textExts.indexOf(ext) !== -1 || (f.type && f.type.indexOf("text") === 0);
@@ -3519,7 +3564,7 @@
     clearTimeout(toast._timer);
     toast._timer = setTimeout(function () {
       toast.hidden = true;
-      el.input.setAttribute("placeholder", "Reply to Vegas AI");
+      el.input.setAttribute("placeholder", state.lang === "ur" ? "کچھ بھی پوچھیں" : "Ask anything");
       if (Rec || hasMediaMic) el.micBtn.setAttribute("title", "آواز سے لکھیں");
     }, 4500);
   }
@@ -3528,7 +3573,7 @@
     listening = false;
     el.micBtn.classList.remove("on");
     el.micBtn.setAttribute("title", "Start Listening (آواز سے لکھیں)");
-    el.input.setAttribute("placeholder", "Reply to Vegas AI");
+    el.input.setAttribute("placeholder", state.lang === "ur" ? "کچھ بھی پوچھیں" : "Ask anything");
   }
 
   function cleanupAudioMonitors() {

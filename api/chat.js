@@ -18,28 +18,28 @@ const BASE_SYSTEM_INSTRUCTION = `آپ Vegas AI ہیں۔ صارف جس زبان �
 
 const MODELS_BY_MODE = {
   fast: [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-3.1-flash-lite",
     "gemini-3.5-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-3-flash-preview",
     "gemini-3.5-flash",
-    "gemini-2.5-flash",
+    "gemini-flash-latest",
   ],
   balanced: [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-3.1-flash-lite",
     "gemini-3.5-flash-lite",
-    "gemini-2.5-flash-lite",
-    "gemini-3-flash-preview",
     "gemini-3.5-flash",
-    "gemini-2.5-flash",
+    "gemini-flash-latest",
   ],
   deep: [
-    "gemini-3.5-flash",
     "gemini-2.5-flash",
-    "gemini-3.1-flash-lite",
-    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
     "gemini-2.5-flash-lite",
-    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
   ],
 };
 
@@ -552,9 +552,16 @@ export default async function handler(req, res) {
               ).replace(/\s/g, "");
               const cleanMime =
                 String(item.mimeType).split(";")[0].trim() || "image/jpeg";
-              parts.push({
-                inlineData: { data: cleanData, mimeType: cleanMime },
-              });
+              const isSupportedMime = /^(image\/(png|jpeg|webp|heic|heif)|audio\/(wav|mp3|aiff|aac|ogg|flac|webm)|video\/(mp4|mpeg|mov|avi|x-flv|mpg|webm|wmv|3gpp)|application\/pdf)$/i.test(cleanMime);
+              if (isSupportedMime) {
+                parts.push({
+                  inlineData: { data: cleanData, mimeType: cleanMime },
+                });
+              } else {
+                parts.push({
+                  text: `\n[Attached File: ${item.name || "document"} (${cleanMime}, size: ~${Math.round(cleanData.length * 0.75)} bytes)]\n`,
+                });
+              }
             }
           }
         }
@@ -585,7 +592,15 @@ export default async function handler(req, res) {
     });
     const wantStream = Boolean(body.stream);
     const requestedModel = body.model;
-    const modelsToTry = requestedModel ? [requestedModel] : (MODELS_BY_MODE[aiMode] || MODELS_BY_MODE.fast);
+    const fallbackChain = [
+      requestedModel,
+      ...(MODELS_BY_MODE[aiMode] || MODELS_BY_MODE.fast),
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
+      "gemini-flash-latest",
+      "gemini-3.8-flash"
+    ].filter(Boolean);
+    const modelsToTry = Array.from(new Set(fallbackChain));
     let reply = "";
     let headersSent = false;
 
