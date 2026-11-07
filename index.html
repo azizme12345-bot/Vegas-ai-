@@ -2779,15 +2779,17 @@
             localStorage.setItem(storageKey, JSON.stringify(savedReports));
           } catch (e) {}
 
-          text = "Analyze this measured website/code inspection data and write a professional, phone-friendly analysis report in " + (state.lang === "ur" ? "Urdu" : "English") + " following these exact 8 sections:\n" +
-            "1. Overall verdict (1-2 sentences).\n" +
-            "2. What works.\n" +
-            "3. What does not work.\n" +
-            "4. What is slow, with the measured numbers.\n" +
-            "5. Issues (give each an ID like ISSUE-1, severity high/medium/low, location, what happens, how to fix).\n" +
-            "6. Fix plan in order.\n" +
-            "7. Fix prompt: one complete English prompt for Google AI Studio in a code block naming exact files, issue IDs, and stating: do not change design or any feature that is not listed.\n" +
-            "8. Limits (what this check could not see).\n\n" +
+          text = "Analyze this measured website/code inspection data and attached files/screenshots, and write a simple, direct analysis report in " + (state.lang === "ur" ? "Urdu" : "English") + " strictly structured in this exact order:\n\n" +
+            "### 1. کیا ٹھیک ہے (What is working)\n" +
+            "سادہ اور صاف زبان میں بتائیں کہ کیا ٹھیک اور درست کام کر رہا ہے۔\n\n" +
+            "### 2. کیا غلط ہے (What is wrong / broken)\n" +
+            "نشاندہی شدہ خرابیاں، ایررز اور سست عناصر واضح کریں۔ اگر صارف نے ساتھ کوئی تصویر یا اسکرین شاٹ منسلک کیا ہے، تو اس میں نظر آنے والی بصری خرابیاں، UI کے مسائل، یا ایرر پیغامات خاص طور پر یہاں بیان کریں۔\n\n" +
+            "### 3. کیسے ٹھیک ہوگا (How to fix)\n" +
+            "ہر مسئلے کو حل کرنے کا مرحلہ وار، عملی طریقہ اور واضح کوڈ دیں۔\n\n" +
+            "### 4. حدود اور غیر جانچی باتیں (Limits: what could not be inspected)\n" +
+            "جو بات جانچی نہ جا سکی (مثلاً پوشیدہ سرور کوڈ، ڈیٹا بیس، لائیو یوزر انٹریکشن)، اسے بغیر کسی قیاس آرائی کے صاف لکھیں۔ اندازے کو یقینی بات نہ بنائیں۔\n\n" +
+            "### 5. AI Studio کے لیے پرامپٹ (Prompt for AI Studio)\n" +
+            "گوگل اے آئی اسٹوڈیو کے لیے ایک مختصر اور مکمل انگریزی پرامپٹ ```prompt کے کوڈ بلاک میں دیں جس میں مطلوبہ فائلیں اور اصلاحات واضح ہوں اور لکھا ہو کہ غیر درج شدہ ڈیزائن یا فیچرز نہ بدلیں۔\n\n" +
             "Measured Analysis Data:\n" + JSON.stringify(analysisData, null, 2) +
             comparisonText;
         } catch (analErr) {}
@@ -3295,6 +3297,12 @@
       };
       reader.readAsDataURL(f);
     } else if (isVid) {
+      if (f.size > 10 * 1024 * 1024) {
+        showVoiceError(state.lang === "ur"
+          ? "ویڈیو کلپ کی حد زیادہ سے زیادہ 10MB ہے۔ بڑی ویڈیو معاون نہیں ہے۔"
+          : "Video clip exceeds 10MB limit. Large videos are not supported.");
+        return;
+      }
       var video = document.createElement("video");
       video.preload = "metadata";
       video.src = url;
@@ -3351,21 +3359,36 @@
       };
       pdfReader.readAsDataURL(f);
     } else if (ext === "zip" && window.JSZip) {
+      var MAX_ZIP_BYTES = 15 * 1024 * 1024; // 15MB limit
+      if (f.size > MAX_ZIP_BYTES) {
+        showVoiceError(state.lang === "ur"
+          ? "ZIP فائل بہت بڑی ہے (زیادہ سے زیادہ حد 15MB ہے)۔"
+          : "ZIP file is too large (maximum limit is 15MB).");
+        return;
+      }
       var jz = new window.JSZip();
       jz.loadAsync(f).then(function(zipObj) {
         var fileNames = Object.keys(zipObj.files);
         var readPromises = [];
-        var maxFiles = 30;
+        var maxFiles = 35;
         var count = 0;
         var summary = "[ZIP Archive: " + (f.name || "archive.zip") + "]\nContained Files (" + fileNames.length + " total):\n" + fileNames.slice(0, 50).join("\n") + "\n\n--- Extracted File Contents ---\n";
+
+        var allowedTextExts = ["html", "htm", "css", "js", "ts", "jsx", "tsx", "json", "md", "py"];
+        var skipLockFiles = ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock"];
+        var skipDirs = ["node_modules/", ".git/", "dist/", "build/", ".next/", ".cache/"];
 
         fileNames.forEach(function(fname) {
           var entry = zipObj.files[fname];
           if (!entry.dir && count < maxFiles) {
+            var lowerName = fname.toLowerCase();
+            var isSkipDir = skipDirs.some(function(d) { return lowerName.indexOf(d) !== -1; });
+            var isLockFile = skipLockFiles.some(function(lf) { return lowerName.endsWith(lf); });
             var parts = fname.split(".");
             var entryExt = parts.length > 1 ? parts.pop().toLowerCase() : "";
-            var codeExts = ["js","ts","jsx","tsx","json","html","css","md","txt","py","svg","yml","yaml","env","c","cpp","java","sql","xml","php","sh"];
-            if (codeExts.indexOf(entryExt) !== -1) {
+            var isAllowedText = allowedTextExts.indexOf(entryExt) !== -1;
+
+            if (!isSkipDir && !isLockFile && isAllowedText) {
               count++;
               readPromises.push(entry.async("string").then(function(text) {
                 return "\n[File: " + fname + "]\n" + text.slice(0, 15000);
@@ -3373,6 +3396,13 @@
             }
           }
         });
+
+        if (count === 0) {
+          showVoiceError(state.lang === "ur"
+            ? "ZIP میں کوئی ٹیکسٹ فائل (html, css, js, ts, json, md, py) نہیں ملی۔"
+            : "No text files (html, css, js, ts, json, md, py) found in ZIP.");
+          return;
+        }
 
         Promise.all(readPromises).then(function(contents) {
           summary += contents.filter(Boolean).join("\n");
@@ -3386,14 +3416,7 @@
           renderAttachments();
         });
       }).catch(function() {
-        pending.push({
-          type: "file",
-          name: f.name || "archive.zip",
-          url: url,
-          mimeType: "text/plain",
-          textContent: "[ZIP Archive: " + (f.name || "archive.zip") + " (" + Math.round(f.size / 1024) + " KB)]"
-        });
-        renderAttachments();
+        showVoiceError(state.lang === "ur" ? "ZIP فائل کھولنے میں خرابی پیش آئی۔" : "Failed to open ZIP archive.");
       });
     } else {
       var textExts = ["txt", "js", "ts", "jsx", "tsx", "py", "html", "css", "json", "md", "csv", "c", "cpp", "h", "java", "sql", "xml", "yaml", "yml", "sh", "bat", "php", "go", "rs", "rb", "log", "env"];
